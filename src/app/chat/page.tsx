@@ -1,7 +1,7 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { signOut } from '@/lib/supabase/auth'
+import { signOutAction } from '@/lib/actions'
 
 export default async function ChatPage() {
   const cookieStore = cookies()
@@ -14,17 +14,14 @@ export default async function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="p-4 min-h-screen">
+      <div className="mx-auto max-w-4xl">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl">Welcome, {user.email}</h1>
-          <form action={async () => {
-            'use server'
-            await signOut()
-          }}>
+          <form action={signOutAction}>
             <button
               type="submit"
-              className="bg-red-500 text-white px-4 py-2 rounded-md"
+              className="px-4 py-2 text-white bg-red-500 rounded-md"
             >
               Sign Out
             </button>
