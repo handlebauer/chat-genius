@@ -18,20 +18,9 @@ interface OnlineUser {
   last_seen: string
 }
 
-interface Channel {
-  id: string
-  name: string
-  description: string | null
-  created_at: string
-}
+type Channel = Database['public']['Tables']['channels']['Row']
 
-interface UserData {
-  id: string
-  name: string
-  email: string
-  avatar_url: string | null
-  status: string
-}
+type UserData = Database['public']['Tables']['users']['Row']
 
 // Store interfaces
 interface MessagesState {
@@ -54,16 +43,20 @@ interface UserState {
 
 interface ChannelsState {
   channels: Channel[]
+  channelsLoading: boolean
   setChannels: (channels: Channel[]) => void
+  setChannelsLoading: (loading: boolean) => void
   activeChannelId: string | null
   setActiveChannelId: (id: string | null) => void
+  getChannelDisplayName: (channelId: string | null, currentUserId: string) => string
+  getDMParticipant: (channelId: string | null, currentUserId: string) => UserData | null
 }
 
 // Combined store type
 interface Store extends MessagesState, OnlineUsersState, UserState, ChannelsState {}
 
 // Create store
-export const useStore = create<Store>((set) => ({
+export const useStore = create<Store>((set, get) => ({
   // Messages slice
   messages: {},
   messagesLoading: {},
@@ -105,8 +98,59 @@ export const useStore = create<Store>((set) => ({
 
   // Channels slice
   channels: [],
-  setChannels: (channels) => set({ channels }),
+  channelsLoading: true,
+  setChannels: (channels) => set({ channels, channelsLoading: false }),
+  setChannelsLoading: (loading) => set({ channelsLoading: loading }),
   activeChannelId: null,
   setActiveChannelId: (id) => set({ activeChannelId: id }),
+  getDMParticipant: (channelId, currentUserId) => {
+    const state = get()
+    const channel = state.channels.find(c => c.id === channelId)
+
+    if (!channel || channel.channel_type !== 'direct_message') return null
+
+    // Extract user IDs from the channel name (format: dm:userId1_userId2)
+    const [, userIds] = channel.name.split(':')
+    const otherUserId = userIds.split('_').find(id => id !== currentUserId)
+    if (!otherUserId) return null
+
+    // Try to find the other user from multiple sources
+    // 1. Check message history for user data (most complete data)
+    const channelMessages = state.messages[channel.id] || []
+    const userFromMessages = channelMessages.find(msg => msg.sender.id === otherUserId)?.sender
+    if (userFromMessages) return userFromMessages
+
+    // 2. Check online users
+    const onlineUser = state.onlineUsers.find(u => u.id === otherUserId)
+    if (onlineUser) {
+      return {
+        id: onlineUser.id,
+        name: onlineUser.name,
+        email: onlineUser.email || '',
+        avatar_url: null,
+        status: 'online',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    }
+
+    return null
+  },
+  getChannelDisplayName: (channelId, currentUserId) => {
+    const state = get()
+
+    // If channels are still loading, return empty string to avoid flashing
+    if (state.channelsLoading) return ''
+
+    const channel = state.channels.find(c => c.id === channelId)
+    if (!channel) return ''
+
+    if (channel.channel_type === 'direct_message') {
+      const participant = get().getDMParticipant(channelId, currentUserId)
+      return participant?.name || participant?.email || ''
+    }
+
+    return channel.name || ''
+  }
 }))
 

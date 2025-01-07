@@ -10,13 +10,25 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { useOnlineUsers } from '@/hooks/use-online-users'
 import { useUserData } from '@/hooks/use-user-data'
+import { useRouter } from 'next/navigation'
+import { getOrCreateDMChannel } from '@/lib/actions'
 
 export function DirectMessagesList({ userId }: { userId: string }) {
   const { onlineUsers } = useOnlineUsers({ userId })
   const currentUser = useUserData(userId)
+  const router = useRouter()
 
   // Filter out the current user from the online users list
   const otherOnlineUsers = onlineUsers.filter(user => user.id !== currentUser?.id)
+
+  const handleUserClick = async (otherUserId: string) => {
+    try {
+      const channel = await getOrCreateDMChannel(userId, otherUserId)
+      router.push(`/chat/${channel.id}`)
+    } catch (error) {
+      console.error('Failed to create or get DM channel:', error)
+    }
+  }
 
   return (
     <Collapsible defaultOpen className="px-2">
@@ -43,6 +55,7 @@ export function DirectMessagesList({ userId }: { userId: string }) {
               key={user.id}
               variant="ghost"
               className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto"
+              onClick={() => handleUserClick(user.id)}
             >
               <Circle className="scale-[0.5] text-green-500 fill-current" />
               {user.name || user.email}

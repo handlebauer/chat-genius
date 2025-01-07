@@ -43,6 +43,7 @@ export interface Database {
           id: string
           name: string
           is_private: boolean
+          channel_type: 'channel' | 'direct_message'
           created_by: string
           created_at: string
           updated_at: string
@@ -51,6 +52,7 @@ export interface Database {
           id?: string
           name: string
           is_private?: boolean
+          channel_type?: 'channel' | 'direct_message'
           created_by: string
           created_at?: string
           updated_at?: string
@@ -59,6 +61,7 @@ export interface Database {
           id?: string
           name?: string
           is_private?: boolean
+          channel_type?: 'channel' | 'direct_message'
           created_by?: string
           created_at?: string
           updated_at?: string

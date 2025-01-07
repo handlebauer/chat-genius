@@ -42,11 +42,15 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
+-- Create channel type enum
+CREATE TYPE channel_type AS ENUM ('channel', 'direct_message');
+
 -- Create channels table
 CREATE TABLE channels (
     id TEXT PRIMARY KEY DEFAULT gen_ulid(),
     name TEXT NOT NULL,
     is_private BOOLEAN DEFAULT false,
+    channel_type channel_type NOT NULL DEFAULT 'channel',
     created_by UUID REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())

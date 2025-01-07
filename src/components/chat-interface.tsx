@@ -16,6 +16,7 @@ import { useStore } from '@/lib/store'
 import type { Database } from '@/lib/supabase/types'
 import { useParams } from 'next/navigation'
 import { MessagesSection } from './messages-section'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface ChatInterfaceProps {
   user: User
@@ -23,7 +24,7 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
   const { channelId } = useParams() as { channelId: string }
-  const { channels } = useStore()
+  const { channels, getChannelDisplayName, getDMParticipant } = useStore()
   const userData = useUserData(user.id) as Database['public']['Tables']['users']['Row'] | null
   const { messages, loading } = useRealTimeMessages(channelId)
   const sendMessage = useMessageSender(userData?.id, channelId)
@@ -33,6 +34,9 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     : user.email?.substring(0, 2).toUpperCase() ?? '??'
 
   const currentChannel = channels.find(channel => channel.id === channelId)
+  const channelDisplayName = getChannelDisplayName(channelId, user.id)
+  const dmParticipant = getDMParticipant(channelId, user.id)
+  const isDM = currentChannel?.channel_type === 'direct_message'
 
   return (
     <div className="flex h-screen">
@@ -54,8 +58,20 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         {/* Chat Header */}
         <div className="flex justify-between items-center px-4 h-14 border-b">
           <div className="flex items-center">
-            <Hash className="mr-2 w-5 h-5" />
-            <h2 className="font-semibold">{currentChannel?.name || 'Select a channel'}</h2>
+            {isDM ? (
+              <Avatar className="w-5 h-5 mr-2">
+                <AvatarImage
+                  src={dmParticipant?.avatar_url || undefined}
+                  alt={channelDisplayName}
+                />
+                <AvatarFallback className="text-xs">
+                  {channelDisplayName.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <Hash className="mr-2 w-5 h-5" />
+            )}
+            <h2 className="font-semibold">{channelDisplayName || '\u00A0'}</h2>
           </div>
 
           <UserMenu
@@ -69,7 +85,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         <MessagesSection messages={messages} loading={loading} />
 
         {/* Message Editor */}
-        <MessageEditor channelName={currentChannel?.name} onSend={sendMessage} />
+        <MessageEditor channelName={channelDisplayName || ''} onSend={sendMessage} />
       </div>
     </div>
   )
