@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button'
 import { Circle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -36,7 +35,7 @@ export function DirectMessagesList({ userId }: { userId: string }) {
               className="justify-start w-full hover:bg-zinc-200"
             >
               <Circle className="scale-[0.5] text-green-500 fill-current" />
-              {user.email}
+              {user.name || user.email}
             </Button>
           ))}
         </div>
