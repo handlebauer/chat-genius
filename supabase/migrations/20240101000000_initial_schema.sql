@@ -1,6 +1,36 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Create ULID generation function
+CREATE OR REPLACE FUNCTION gen_ulid() RETURNS text AS $$
+DECLARE
+  -- Crockford's Base32
+  encoding   CHAR(32) := '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  timestamp  BIGINT;
+  output     TEXT := '';
+  unix_time  BIGINT;
+  ulid_chars CHAR(2);
+  counter    INT;
+BEGIN
+  -- Get current Unix timestamp in milliseconds
+  unix_time := (EXTRACT(EPOCH FROM CLOCK_TIMESTAMP()) * 1000)::BIGINT;
+
+  -- Generate timestamp part (first 10 chars)
+  timestamp := unix_time;
+  FOR i IN REVERSE 9..0 LOOP
+    output := output || substr(encoding, (timestamp % 32)::integer + 1, 1);
+    timestamp := timestamp >> 5;
+  END LOOP;
+
+  -- Generate random part (last 16 chars)
+  FOR i IN 0..15 LOOP
+    output := output || substr(encoding, 1 + (random() * 31)::integer, 1);
+  END LOOP;
+
+  RETURN output;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
 -- Create users table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -14,7 +44,7 @@ CREATE TABLE users (
 
 -- Create channels table
 CREATE TABLE channels (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id TEXT PRIMARY KEY DEFAULT gen_ulid(),
     name TEXT NOT NULL,
     is_private BOOLEAN DEFAULT false,
     created_by UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -26,7 +56,7 @@ CREATE TABLE channels (
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
+    channel_id TEXT REFERENCES channels(id) ON DELETE CASCADE,
     thread_id UUID,
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
@@ -40,7 +70,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE messages;
 -- Create threads table
 CREATE TABLE threads (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
+    channel_id TEXT REFERENCES channels(id) ON DELETE CASCADE,
     parent_message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );

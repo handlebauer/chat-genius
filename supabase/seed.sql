@@ -2,8 +2,8 @@
 DO $$
 DECLARE
     system_user_id UUID;
-    general_channel_id UUID;
-    ai_channel_id UUID;
+    general_channel_id TEXT;
+    ai_channel_id TEXT;
 BEGIN
     -- Insert system user and get its ID
     INSERT INTO users (id, email, name, created_at, updated_at)
@@ -28,7 +28,7 @@ BEGIN
     INSERT INTO channels (id, name, is_private, created_by, created_at, updated_at)
     VALUES
       (
-        gen_random_uuid(),
+        gen_ulid(),
         'general',
         false,
         system_user_id,
@@ -36,7 +36,7 @@ BEGIN
         CURRENT_TIMESTAMP
       ),
       (
-        gen_random_uuid(),
+        gen_ulid(),
         'ai',
         false,
         system_user_id,
