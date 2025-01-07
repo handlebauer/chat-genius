@@ -1,24 +1,25 @@
- 'use client'
+'use client'
 
 import { Button } from '@/components/ui/button'
-import { Circle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { MessageSquare, ChevronDown } from 'lucide-react'
 import {
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible"
-import { ChevronDown } from 'lucide-react'
-import { useOnlineUsers } from '@/hooks/use-online-users'
-import { useUserData } from '@/hooks/use-user-data'
 
-export function DirectMessagesList({ userId }: { userId: string }) {
-  const { onlineUsers } = useOnlineUsers({ userId })
-  const currentUser = useUserData(userId)
+interface DirectMessage {
+  id: string
+  name: string
+}
 
-  // Filter out the current user from the online users list
-  const otherOnlineUsers = onlineUsers.filter(user => user.id !== currentUser?.id)
+interface DirectMessagesListProps {
+  messages: DirectMessage[]
+  onSelect: (message: DirectMessage) => void
+  currentMessageId?: string
+}
 
+export function DirectMessagesList({ messages = [], onSelect, currentMessageId }: DirectMessagesListProps) {
   return (
     <Collapsible defaultOpen className="px-2">
       <div className="flex items-center px-2 py-2">
@@ -29,14 +30,15 @@ export function DirectMessagesList({ userId }: { userId: string }) {
       </div>
       <CollapsibleContent>
         <div className="px-2 space-y-1">
-          {otherOnlineUsers.map(user => (
+          {messages.map(message => (
             <Button
-              key={user.id}
+              key={message.id}
               variant="ghost"
               className="justify-start w-full hover:bg-zinc-200"
+              onClick={() => onSelect(message)}
             >
-              <Circle className="scale-[0.5] text-green-500 fill-current" />
-              {user.email}
+              <MessageSquare className="mr-2 w-4 h-4" />
+              {message.name}
             </Button>
           ))}
         </div>

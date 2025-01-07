@@ -7,12 +7,12 @@ import { MessageEditor } from '@/components/message-editor'
 import { User } from '@supabase/supabase-js'
 import { MessageList } from './message-list'
 import { ChannelList } from './channel-list'
-import { DirectMessagesList } from './direct-messages-list'
 import { UserMenu } from './user-menu'
 import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
 import { useUserData } from '@/hooks/use-user-data'
 import { useChannels } from '@/hooks/use-channels'
 import { useMessageSender } from '@/hooks/use-message-sender'
+import { DirectMessagesList } from '@/components/direct-messages-list'
 
 interface ChatInterfaceProps {
   user: User
@@ -56,10 +56,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
 
           <Separator className="mx-4 my-2" />
 
-          <DirectMessagesList
-            messages={MOCK_DIRECT_MESSAGES}
-            onSelect={handleDirectMessageSelect}
-          />
+          <DirectMessagesList userId={user.id} />
         </ScrollArea>
       </div>
 
