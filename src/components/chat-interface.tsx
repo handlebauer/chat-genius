@@ -33,12 +33,15 @@ interface Message {
   timestamp: Date
 }
 
+type Channel = Database['public']['Tables']['channels']['Row']
+
 interface ChatInterfaceProps {
   user: User
 }
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([])
+  const [channels, setChannels] = useState<Channel[]>([])
   const [userData, setUserData] = useState<Database['public']['Tables']['users']['Row'] | null>(null)
   const supabase = createClientComponentClient<Database>()
 
@@ -60,6 +63,24 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
 
     loadUserData()
   }, [user.id, supabase])
+
+  useEffect(() => {
+    async function loadChannels() {
+      const { data, error } = await supabase
+        .from('channels')
+        .select('*')
+        .order('name')
+
+      if (error) {
+        console.error('Error loading channels:', error)
+        return
+      }
+
+      setChannels(data)
+    }
+
+    loadChannels()
+  }, [supabase])
 
   const handleSendMessage = (content: string) => {
     if (!userData) return
@@ -96,14 +117,12 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             </div>
             <CollapsibleContent>
               <div className="px-2 space-y-1">
-                <Button variant="ghost" className="justify-start w-full">
-                  <Hash className="mr-2 w-4 h-4" />
-                  general
-                </Button>
-                <Button variant="ghost" className="justify-start w-full">
-                  <Hash className="mr-2 w-4 h-4" />
-                  random
-                </Button>
+                {channels.map(channel => (
+                  <Button key={channel.id} variant="ghost" className="justify-start w-full">
+                    <Hash className="mr-2 w-4 h-4" />
+                    {channel.name}
+                  </Button>
+                ))}
               </div>
             </CollapsibleContent>
           </Collapsible>
