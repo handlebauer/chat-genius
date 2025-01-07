@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/supabase/types'
+import { useStore } from '@/lib/store'
 
 export function useUserData(userId: string) {
-  const [userData, setUserData] = useState<Database['public']['Tables']['users']['Row'] | null>(null)
   const supabase = createClientComponentClient<Database>()
+  const { userData, setUserData } = useStore()
 
   useEffect(() => {
     async function loadUserData() {
-      const { data, error } = await supabase
+      const { data: user, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
@@ -19,11 +20,13 @@ export function useUserData(userId: string) {
         return
       }
 
-      setUserData(data)
+      if (user) {
+        setUserData(user)
+      }
     }
 
     loadUserData()
-  }, [userId, supabase])
+  }, [userId, supabase, setUserData])
 
   return userData
 }

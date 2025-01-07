@@ -1,44 +1,56 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/supabase/types'
-
-type Channel = Database['public']['Tables']['channels']['Row']
+import { useStore } from '@/lib/store'
 
 export function useChannels() {
-  const [channels, setChannels] = useState<Channel[]>([])
-  const [currentChannel, setCurrentChannel] = useState<Channel | null>(null)
   const supabase = createClientComponentClient<Database>()
+  const { channels, setChannels, activeChannelId, setActiveChannelId } = useStore()
 
   useEffect(() => {
     async function loadChannels() {
-      const { data, error } = await supabase
+      const { data: channelsData, error } = await supabase
         .from('channels')
         .select('*')
-        .order('name')
+        .order('created_at')
 
       if (error) {
         console.error('Error loading channels:', error)
         return
       }
 
-      setChannels(data)
-      // Set initial channel to #general
-      const generalChannel = data.find(channel => channel.name === 'general')
-      if (generalChannel) {
-        setCurrentChannel(generalChannel)
+      if (channelsData) {
+        setChannels(channelsData)
+        // Set default channel if none is selected
+        if (!activeChannelId && channelsData.length > 0) {
+          setActiveChannelId(channelsData[0].id)
+        }
       }
     }
 
     loadChannels()
-  }, [supabase])
 
-  const handleChannelSelect = (channel: Channel) => {
-    setCurrentChannel(channel)
-  }
+    // Subscribe to channel changes
+    const channel = supabase
+      .channel('channel_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'channels'
+        },
+        () => {
+          // Reload channels when there are changes
+          loadChannels()
+        }
+      )
+      .subscribe()
 
-  return {
-    channels,
-    currentChannel,
-    handleChannelSelect,
-  }
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [supabase, setChannels, activeChannelId, setActiveChannelId])
+
+  return { channels }
 }

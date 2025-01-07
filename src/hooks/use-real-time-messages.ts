@@ -1,15 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/supabase/types'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-
-interface Message {
-  id: string
-  content: string
-  sender: Database['public']['Tables']['users']['Row']
-  created_at: string
-  channel_id: string
-}
+import { useStore } from '@/lib/store'
 
 type MessageRow = {
   id: string
@@ -31,8 +24,8 @@ function isMessageRow(obj: any): obj is MessageRow {
 }
 
 export function useRealTimeMessages(channelId: string | undefined) {
-  const [messages, setMessages] = useState<Message[]>([])
   const supabase = createClientComponentClient<Database>()
+  const { messages, setMessages, addMessage } = useStore()
 
   // Load initial messages
   useEffect(() => {
@@ -65,12 +58,12 @@ export function useRealTimeMessages(channelId: string | undefined) {
       }
 
       if (messagesData) {
-        setMessages(messagesData as unknown as Message[])
+        setMessages(channelId, messagesData as any)
       }
     }
 
     loadMessages()
-  }, [channelId, supabase])
+  }, [channelId, supabase, setMessages])
 
   // Set up real-time subscription
   useEffect(() => {
@@ -115,7 +108,7 @@ export function useRealTimeMessages(channelId: string | undefined) {
             .single()
 
           if (messageData) {
-            setMessages(prev => [...prev, messageData as unknown as Message])
+            addMessage(channelId, messageData as any)
           }
         }
       )
@@ -125,7 +118,7 @@ export function useRealTimeMessages(channelId: string | undefined) {
     return () => {
       channel.unsubscribe()
     }
-  }, [supabase, channelId])
+  }, [supabase, channelId, addMessage])
 
-  return messages
+  return channelId ? messages[channelId] || [] : []
 }

@@ -10,33 +10,26 @@ import { MessageEditor } from './message-editor'
 import { UserMenu } from './user-menu'
 import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
 import { useUserData } from '@/hooks/use-user-data'
-import { useChannels } from '@/hooks/use-channels'
 import { useMessageSender } from '@/hooks/use-message-sender'
 import { DirectMessagesList } from '@/components/direct-messages-list'
+import { useStore } from '@/lib/store'
+import type { Database } from '@/lib/supabase/types'
 
 interface ChatInterfaceProps {
   user: User
 }
 
-const MOCK_DIRECT_MESSAGES = [
-  { id: '1', name: 'John Doe' },
-  { id: '2', name: 'Jane Smith' },
-]
-
 export function ChatInterface({ user }: ChatInterfaceProps) {
-  const userData = useUserData(user.id)
-  const { channels, currentChannel, handleChannelSelect } = useChannels()
-  const messages = useRealTimeMessages(currentChannel?.id)
-  const sendMessage = useMessageSender(userData?.id, currentChannel?.id)
+  const { activeChannelId, channels } = useStore()
+  const userData = useUserData(user.id) as Database['public']['Tables']['users']['Row'] | null
+  const messages = useRealTimeMessages(activeChannelId || undefined)
+  const sendMessage = useMessageSender(userData?.id, activeChannelId || undefined)
 
   const userInitials = userData?.name
     ? userData.name.substring(0, 2).toUpperCase()
     : user.email?.substring(0, 2).toUpperCase() ?? '??'
 
-  const handleDirectMessageSelect = (message: { id: string; name: string }) => {
-    // TODO: Implement direct message selection
-    console.log('Selected direct message:', message)
-  }
+  const currentChannel = channels.find(channel => channel.id === activeChannelId)
 
   return (
     <div className="flex h-screen">
@@ -47,14 +40,8 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         </div>
 
         <ScrollArea className="flex-1">
-          <ChannelList
-            channels={channels}
-            currentChannel={currentChannel}
-            onChannelSelect={handleChannelSelect}
-          />
-
+          <ChannelList />
           <Separator className="mx-4 my-2" />
-
           <DirectMessagesList userId={user.id} />
         </ScrollArea>
       </div>

@@ -1,17 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useUserData } from '@/hooks/use-user-data'
 import { Database } from '@/lib/supabase/types'
-
-export type OnlineUser = {
-  id: string
-  name: string
-  email: string | undefined
-  last_seen: string
-}
+import { useStore } from '@/lib/store'
 
 interface OnlineUsersProps {
   userId: string
@@ -19,8 +13,7 @@ interface OnlineUsersProps {
 
 export function useOnlineUsers({ userId }: OnlineUsersProps) {
   const supabase = createClientComponentClient<Database>()
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
-  const [, setChannel] = useState<RealtimeChannel | null>(null)
+  const { onlineUsers, setOnlineUsers } = useStore()
   const user = useUserData(userId)
 
   useEffect(() => {
@@ -38,13 +31,13 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
     // Handle presence state changes
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState()
-      const onlineUsers = Object.values(state).flat().map((presence: any) => ({
+      const currentOnlineUsers = Object.values(state).flat().map((presence: any) => ({
         id: presence.user_id,
         email: presence.email,
         name: presence.name,
         last_seen: new Date().toISOString(),
       }))
-      setOnlineUsers(onlineUsers)
+      setOnlineUsers(currentOnlineUsers)
     })
 
     // Subscribe to the channel
@@ -60,12 +53,10 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
         }
       })
 
-    setChannel(channel)
-
     return () => {
       channel.unsubscribe()
     }
-  }, [user])
+  }, [user, supabase, setOnlineUsers])
 
   return { onlineUsers }
 }
