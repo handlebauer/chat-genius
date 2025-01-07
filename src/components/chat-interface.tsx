@@ -21,19 +21,61 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible"
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import type { Database } from '@/lib/supabase/types'
+
+interface Message {
+  id: string
+  content: string
+  sender: Database['public']['Tables']['users']['Row']
+  timestamp: Date
+}
 
 interface ChatInterfaceProps {
   user: User
 }
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [userData, setUserData] = useState<Database['public']['Tables']['users']['Row'] | null>(null)
+  const supabase = createClientComponentClient<Database>()
+
+  useEffect(() => {
+    async function loadUserData() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (error) {
+        console.error('Error loading user data:', error)
+        return
+      }
+
+      setUserData(data)
+    }
+
+    loadUserData()
+  }, [user.id, supabase])
+
   const handleSendMessage = (content: string) => {
-    // TODO: Implement sending messages
-    console.log('Message sent:', content)
+    if (!userData) return
+
+    const newMessage: Message = {
+      id: crypto.randomUUID(),
+      content,
+      sender: userData,
+      timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, newMessage])
   }
 
-  const userInitials = user.email ? user.email.substring(0, 2).toUpperCase() : '??'
+  const userInitials = userData?.name
+    ? userData.name.substring(0, 2).toUpperCase()
+    : user.email?.substring(0, 2).toUpperCase() ?? '??'
 
   return (
     <div className="flex h-screen">
@@ -47,13 +89,13 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           {/* Channels Section */}
           <Collapsible defaultOpen className="px-2">
             <div className="flex items-center px-2 py-2">
-              <CollapsibleTrigger className="flex items-center gap-2 hover:text-zinc-600">
+              <CollapsibleTrigger className="flex gap-2 items-center hover:text-zinc-600">
                 <ChevronDown className="w-4 h-4" />
                 <h2 className="text-sm font-semibold text-zinc-500">Channels</h2>
               </CollapsibleTrigger>
             </div>
             <CollapsibleContent>
-              <div className="space-y-1 px-2">
+              <div className="px-2 space-y-1">
                 <Button variant="ghost" className="justify-start w-full">
                   <Hash className="mr-2 w-4 h-4" />
                   general
@@ -66,18 +108,18 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             </CollapsibleContent>
           </Collapsible>
 
-          <Separator className="my-2 mx-4" />
+          <Separator className="mx-4 my-2" />
 
           {/* Direct Messages Section */}
           <Collapsible defaultOpen className="px-2">
             <div className="flex items-center px-2 py-2">
-              <CollapsibleTrigger className="flex items-center gap-2 hover:text-zinc-600">
+              <CollapsibleTrigger className="flex gap-2 items-center hover:text-zinc-600">
                 <ChevronDown className="w-4 h-4" />
                 <h2 className="text-sm font-semibold text-zinc-500">Direct Messages</h2>
               </CollapsibleTrigger>
             </div>
             <CollapsibleContent>
-              <div className="space-y-1 px-2">
+              <div className="px-2 space-y-1">
                 <Button variant="ghost" className="justify-start w-full">
                   <MessageSquare className="mr-2 w-4 h-4" />
                   John Doe
@@ -116,7 +158,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
               <DropdownMenuSeparator />
               <form action={signOutAction}>
                 <DropdownMenuItem asChild>
-                  <button className="flex items-center w-full">
+                  <button className="flex items-center w-full cursor-pointer">
                     <LogOut className="mr-2 w-4 h-4" />
                     Sign out
                   </button>
@@ -129,21 +171,26 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         {/* Messages Area */}
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-6">
-            {/* Sample Messages */}
-            <div className="relative group">
-              <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 rounded-full bg-zinc-200 shrink-0" />
-                <div className="space-y-1">
-                  <div className="flex gap-2 items-center">
-                    <span className="font-medium">John Doe</span>
-                    <span className="text-xs text-zinc-500">12:34 PM</span>
+            {messages.map(message => (
+              <div key={message.id} className="relative group">
+                <div className="flex gap-3 items-start">
+                  <div className="flex justify-center items-center w-8 h-8 text-sm font-medium rounded-full bg-zinc-200 shrink-0">
+                    {message.sender.name
+                      ? message.sender.name.substring(0, 2).toUpperCase()
+                      : message.sender.email.substring(0, 2).toUpperCase()}
                   </div>
-                  <div className="text-sm">
-                    Hello, world!
+                  <div className="space-y-1">
+                    <div className="flex gap-2 items-center">
+                      <span className="font-medium">{message.sender.name || message.sender.email}</span>
+                      <span className="text-xs text-zinc-500">
+                        {message.timestamp.toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="text-sm" dangerouslySetInnerHTML={{ __html: message.content }} />
                   </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
         </ScrollArea>
 
