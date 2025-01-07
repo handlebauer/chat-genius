@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ChatGenius
+
+A real-time messaging platform designed for team collaboration, featuring secure authentication, organized communication via channels and DMs, and essential tools like file sharing, threaded conversations, and emoji reactions.
 
 ## Getting Started
 
@@ -16,9 +18,17 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a custom font for modern interfaces.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Features
+
+- Real-time messaging
+- Channel-based communication
+- Direct messages
+- User authentication with Discord and GitHub
+- Modern, responsive UI with Tailwind CSS
+- Built with Next.js 14 and TypeScript
+- Powered by Supabase for real-time data and auth
 
 ## Learn More
 
