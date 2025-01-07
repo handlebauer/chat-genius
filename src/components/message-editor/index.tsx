@@ -1,6 +1,6 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, KeyboardEvent } from 'react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ToolbarButtons } from './toolbar-buttons'
 import { ActionButtons } from './action-buttons'
@@ -28,20 +28,19 @@ export function MessageEditor({ onSend, channelName = '' }: MessageEditorProps) 
       attributes: {
         class: 'w-full text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto min-h-[24px] max-h-[200px]',
       },
-      handleKeyDown: (_, event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-          event.preventDefault()
-          if (!editor?.isEmpty) {
-            const content = editor?.getHTML() || ''
-            onSend(content)
-            editor?.commands.clearContent()
-          }
-          return true
-        }
-        return false
-      },
     },
   }, [channelName])
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      if (!editor?.isEmpty) {
+        const content = editor?.getHTML() || ''
+        onSend(content)
+        editor?.commands.clearContent()
+      }
+    }
+  }, [editor, onSend])
 
   const handleSend = useCallback(() => {
     if (editor?.isEmpty) return
@@ -66,7 +65,7 @@ export function MessageEditor({ onSend, channelName = '' }: MessageEditorProps) 
         <div className="flex flex-col">
           <ToolbarButtons editor={editor} />
           <div className="px-3 py-2">
-            <div className="flex-1" ref={editorRef}>
+            <div className="flex-1" ref={editorRef} onKeyDown={handleKeyDown}>
               <EditorContent editor={editor} />
             </div>
           </div>
