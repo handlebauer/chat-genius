@@ -1,18 +1,23 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useCallback, useRef, KeyboardEvent } from 'react'
+import { useCallback, useRef, KeyboardEvent, useState } from 'react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ToolbarButtons } from './toolbar-buttons'
 import { ActionButtons } from './action-buttons'
+import { FilePreview } from './file-preview'
 import './message-editor.css'
+import type { UploadedFile } from '@/hooks/use-file-upload'
 
 interface MessageEditorProps {
-  onSend: (content: string) => void
+  onSend: (content: string, attachments?: UploadedFile[]) => void
   channelName?: string
+  userId: string
 }
 
-export function MessageEditor({ onSend, channelName = '' }: MessageEditorProps) {
+export function MessageEditor({ onSend, channelName = '', userId }: MessageEditorProps) {
   const editorRef = useRef(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
 
   const editor = useEditor({
     extensions: [
@@ -34,25 +39,46 @@ export function MessageEditor({ onSend, channelName = '' }: MessageEditorProps) 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      if (!editor?.isEmpty) {
+      if (!editor?.isEmpty || uploadedFiles.length > 0) {
         const content = editor?.getHTML() || ''
-        onSend(content)
+        onSend(content, uploadedFiles)
         editor?.commands.clearContent()
+        setSelectedFiles([])
+        setUploadedFiles([])
       }
     }
-  }, [editor, onSend])
+  }, [editor, onSend, uploadedFiles])
 
   const handleSend = useCallback(() => {
-    if (editor?.isEmpty) return
-    const content = editor?.getHTML() || ''
-    onSend(content)
-    editor?.commands.clearContent()
-  }, [editor, onSend])
+    if ((!editor?.isEmpty || uploadedFiles.length > 0)) {
+      const content = editor?.getHTML() || ''
+      console.log('📨 Sending message:', { content, attachments: uploadedFiles })
+      onSend(content, uploadedFiles)
+      editor?.commands.clearContent()
+      setSelectedFiles([])
+      setUploadedFiles([])
+    }
+  }, [editor, onSend, uploadedFiles])
 
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return
     editor?.commands.focus()
   }, [editor])
+
+  const handleFilesSelected = useCallback((files: File[]) => {
+    console.log('📁 Files added to selection:', files.map(f => f.name))
+    setSelectedFiles(prev => [...prev, ...files])
+  }, [])
+
+  const handleFileUploadComplete = useCallback((files: UploadedFile[]) => {
+    console.log('💾 Files ready for sending:', files)
+    setUploadedFiles(prev => [...prev, ...files])
+  }, [])
+
+  const handleFileRemove = useCallback((fileId: string) => {
+    console.log('🗑️ Removing file:', fileId)
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
+  }, [])
 
   if (!channelName) return null
 
@@ -69,7 +95,15 @@ export function MessageEditor({ onSend, channelName = '' }: MessageEditorProps) 
               <EditorContent editor={editor} />
             </div>
           </div>
-          <ActionButtons editor={editor} onSend={handleSend} />
+          <FilePreview files={uploadedFiles} onRemove={handleFileRemove} />
+          <ActionButtons
+            editor={editor}
+            onSend={handleSend}
+            userId={userId}
+            onFilesSelected={handleFilesSelected}
+            onUploadComplete={handleFileUploadComplete}
+            onFileRemove={handleFileRemove}
+          />
         </div>
       </div>
     </div>

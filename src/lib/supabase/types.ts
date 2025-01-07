@@ -9,6 +9,41 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      attachments: {
+        Row: {
+          id: string
+          message_id: string
+          file_name: string
+          file_size: number
+          file_type: string
+          storage_path: string
+          content_type: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          file_name: string
+          file_size: number
+          file_type: string
+          storage_path: string
+          content_type: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          storage_path?: string
+          content_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       users: {
         Row: {
           id: string

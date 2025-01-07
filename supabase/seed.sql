@@ -4,6 +4,7 @@ DECLARE
     system_user_id UUID;
     general_channel_id TEXT;
     ai_channel_id TEXT;
+    docs_message_id UUID;
 BEGIN
     -- Insert system user and get its ID
     INSERT INTO users (id, email, name, created_at, updated_at)
@@ -76,6 +77,38 @@ BEGIN
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
       );
+
+    -- Get the ID of the documentation message
+    SELECT id INTO docs_message_id
+    FROM messages
+    WHERE content LIKE '%documentation%'
+    AND channel_id = general_channel_id
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    -- Insert a sample PDF attachment for the documentation message
+    INSERT INTO attachments (
+        id,
+        message_id,
+        file_name,
+        file_size,
+        file_type,
+        storage_path,
+        content_type,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        gen_random_uuid(),
+        docs_message_id,
+        'chatgenius-quickstart-guide.pdf',
+        1048576, -- 1MB sample size
+        'pdf',
+        'public/attachments/chatgenius-quickstart-guide.pdf',
+        'application/pdf',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    );
 
     -- Insert seed messages for ai channel
     INSERT INTO messages (id, content, channel_id, sender_id, created_at, updated_at)

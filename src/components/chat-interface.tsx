@@ -92,7 +92,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         <MessagesSection messages={messages} loading={loading} />
 
         {/* Message Editor */}
-        <MessageEditor channelName={channelDisplayName || ''} onSend={sendMessage} />
+        <MessageEditor channelName={channelDisplayName || ''} onSend={sendMessage} userId={userData?.id || ''} />
       </div>
     </div>
   )

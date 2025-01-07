@@ -89,6 +89,22 @@ CREATE TABLE reactions (
     UNIQUE(message_id, user_id, emoji)
 );
 
+-- Create attachments table
+CREATE TABLE attachments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_type TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- Create index for better query performance on attachments
+CREATE INDEX idx_attachments_message_id ON attachments(message_id);
+
 -- Add foreign key constraint for thread_id in messages table
 ALTER TABLE messages
 ADD CONSTRAINT fk_thread
@@ -111,6 +127,12 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Add trigger for attachments updated_at
+CREATE TRIGGER update_attachments_updated_at
+    BEFORE UPDATE ON attachments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
@@ -125,3 +147,41 @@ CREATE TRIGGER update_messages_updated_at
     BEFORE UPDATE ON messages
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Create storage bucket for file attachments if it doesn't exist
+DO $$
+BEGIN
+  INSERT INTO storage.buckets (id, name, public)
+  VALUES (
+    'attachments',
+    'attachments',
+    true -- Making it public since we'll control access through policies
+  )
+  ON CONFLICT (id) DO NOTHING;
+END $$;
+
+-- Set up storage policies for the attachments bucket
+CREATE POLICY "Allow public read access"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'attachments');
+
+-- Only authenticated users can upload files
+CREATE POLICY "Allow authenticated users to upload files"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'attachments' AND
+  (storage.foldername(name))[1] = 'public'
+);
+
+-- Users can only delete their own uploads
+CREATE POLICY "Allow users to delete own uploads"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'attachments' AND
+  auth.uid()::text = (storage.foldername(name))[2]
+);
+
+-- Enable RLS on storage.objects
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
