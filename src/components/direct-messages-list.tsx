@@ -32,7 +32,7 @@ export function DirectMessagesList({ userId }: { userId: string }) {
             <Button
               key={user.id}
               variant="ghost"
-              className="justify-start w-full hover:bg-zinc-200"
+              className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200"
             >
               <Circle className="scale-[0.5] text-green-500 fill-current" />
               {user.name || user.email}

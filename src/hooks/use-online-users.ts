@@ -23,8 +23,6 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
   const [, setChannel] = useState<RealtimeChannel | null>(null)
   const user = useUserData(userId)
 
-  console.log('user', user)
-
   useEffect(() => {
     if (!user) return
 
@@ -56,6 +54,7 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
           await channel.track({
             user_id: user.id,
             email: user.email,
+            name: user.name,
             last_seen: new Date().toISOString(),
           })
         }

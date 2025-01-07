@@ -28,15 +28,23 @@ export async function GET(request: Request) {
 
     // Extract user metadata based on provider
     const metadata = providerUser.user_metadata
+    const provider = providerUser.app_metadata?.provider
     let name = ''
     let avatarUrl = ''
 
-    if (metadata.provider_id === 'discord') {
-      name = metadata.full_name || metadata.name || metadata.user_name
+    if (provider === 'discord') {
+      name = metadata.full_name || metadata.name || metadata.user_name || metadata.email
       avatarUrl = metadata.avatar_url
-    } else if (metadata.provider_id === 'github') {
-      name = metadata.user_name || metadata.name || metadata.full_name
+    } else if (provider === 'github') {
+      // GitHub stores username in user_name or preferred_username
+      name = metadata.name || metadata.preferred_username || metadata.user_name || metadata.email
+      // GitHub avatar is in avatar_url
       avatarUrl = metadata.avatar_url
+    }
+
+    // Ensure we have at least some name value
+    if (!name && user.email) {
+      name = user.email.split('@')[0] // Use email username as fallback
     }
 
     // Create or update user record
