@@ -17,6 +17,23 @@ export const signInWithDiscord = async () => {
   return data
 }
 
+export const signInWithGithub = async () => {
+  const supabase = createClientComponent()
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'github',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`
+    }
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
 export const signOut = async () => {
   const supabase = createClientComponent()
 

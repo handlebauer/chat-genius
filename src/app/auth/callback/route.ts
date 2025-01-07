@@ -18,12 +18,25 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL('/login', requestUrl.origin))
     }
 
-    // Get user details from Discord
-    const { data: { user: discordUser }, error: userError } = await supabase.auth.getUser()
+    // Get user details from the provider
+    const { data: { user: providerUser }, error: userError } = await supabase.auth.getUser()
 
-    if (userError || !discordUser?.user_metadata) {
+    if (userError || !providerUser?.user_metadata) {
       console.error('User data error:', userError)
       return NextResponse.redirect(new URL('/login', requestUrl.origin))
+    }
+
+    // Extract user metadata based on provider
+    const metadata = providerUser.user_metadata
+    let name = ''
+    let avatarUrl = ''
+
+    if (metadata.provider_id === 'discord') {
+      name = metadata.full_name || metadata.name || metadata.user_name
+      avatarUrl = metadata.avatar_url
+    } else if (metadata.provider_id === 'github') {
+      name = metadata.user_name || metadata.name || metadata.full_name
+      avatarUrl = metadata.avatar_url
     }
 
     // Create or update user record
@@ -32,8 +45,8 @@ export async function GET(request: Request) {
       .upsert({
         id: user.id,
         email: user.email!,
-        name: discordUser.user_metadata.full_name || discordUser.user_metadata.name || discordUser.user_metadata.user_name,
-        avatar_url: discordUser.user_metadata.avatar_url,
+        name: name,
+        avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'id'
