@@ -256,7 +256,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
                     key={channel.id}
                     variant="ghost"
                     className={cn(
-                      "justify-start w-full",
+                      "justify-start w-full hover:bg-zinc-200",
                       currentChannel?.id === channel.id && "bg-zinc-200"
                     )}
                     onClick={() => handleChannelSelect(channel)}
@@ -281,11 +281,11 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             </div>
             <CollapsibleContent>
               <div className="px-2 space-y-1">
-                <Button variant="ghost" className="justify-start w-full">
+                <Button variant="ghost" className="justify-start w-full hover:bg-zinc-200">
                   <MessageSquare className="mr-2 w-4 h-4" />
                   John Doe
                 </Button>
-                <Button variant="ghost" className="justify-start w-full">
+                <Button variant="ghost" className="justify-start w-full hover:bg-zinc-200">
                   <MessageSquare className="mr-2 w-4 h-4" />
                   Jane Smith
                 </Button>
