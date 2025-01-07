@@ -1,236 +1,43 @@
 'use client'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Button } from '@/components/ui/button'
-import { LogOut, Hash, MessageSquare, ChevronDown } from 'lucide-react'
+import { Hash } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { MessageEditor } from '@/components/message-editor'
 import { User } from '@supabase/supabase-js'
-import { signOutAction } from '@/lib/actions'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from "@/components/ui/collapsible"
-import { useState, useEffect } from 'react'
-import { cn } from '@/lib/utils'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/lib/supabase/types'
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-
-interface Message {
-  id: string
-  content: string
-  sender: Database['public']['Tables']['users']['Row']
-  created_at: string
-  channel_id: string
-}
-
-type MessageWithSender = Database['public']['Tables']['messages']['Row'] & {
-  sender: Database['public']['Tables']['users']['Row']
-}
-
-type Channel = Database['public']['Tables']['channels']['Row']
+import { MessageList } from './message-list'
+import { ChannelList } from './channel-list'
+import { DirectMessagesList } from './direct-messages-list'
+import { UserMenu } from './user-menu'
+import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
+import { useUserData } from '@/hooks/use-user-data'
+import { useChannels } from '@/hooks/use-channels'
+import { useMessageSender } from '@/hooks/use-message-sender'
 
 interface ChatInterfaceProps {
   user: User
 }
 
-type MessageRow = {
-  id: string
-  sender_id: string
-  channel_id: string
-  thread_id: string | null
-  content: string
-  created_at: string
-  updated_at: string
-}
-
-function isMessageRow(obj: any): obj is MessageRow {
-  return (
-    obj &&
-    typeof obj.id === 'string' &&
-    typeof obj.channel_id === 'string' &&
-    typeof obj.content === 'string'
-  )
-}
+// Temporary mock data for direct messages
+const MOCK_DIRECT_MESSAGES = [
+  { id: '1', name: 'John Doe' },
+  { id: '2', name: 'Jane Smith' },
+]
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [channels, setChannels] = useState<Channel[]>([])
-  const [currentChannel, setCurrentChannel] = useState<Channel | null>(null)
-  const [userData, setUserData] = useState<Database['public']['Tables']['users']['Row'] | null>(null)
-  const supabase = createClientComponentClient<Database>()
-
-  // Load user data
-  useEffect(() => {
-    async function loadUserData() {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (error) {
-        console.error('Error loading user data:', error)
-        return
-      }
-
-      setUserData(data)
-    }
-
-    loadUserData()
-  }, [user.id, supabase])
-
-  // Load channels and set initial channel
-  useEffect(() => {
-    async function loadChannels() {
-      const { data, error } = await supabase
-        .from('channels')
-        .select('*')
-        .order('name')
-
-      if (error) {
-        console.error('Error loading channels:', error)
-        return
-      }
-
-      setChannels(data)
-      // Set initial channel to #general
-      const generalChannel = data.find(channel => channel.name === 'general')
-      if (generalChannel) {
-        setCurrentChannel(generalChannel)
-      }
-    }
-
-    loadChannels()
-  }, [supabase])
-
-  // Load messages for current channel
-  useEffect(() => {
-    if (!currentChannel?.id) return
-
-    async function loadMessages() {
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
-        .select(`
-          id,
-          content,
-          created_at,
-          channel_id,
-          sender:sender_id(
-            id,
-            name,
-            email,
-            avatar_url,
-            status,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('channel_id', currentChannel?.id)
-        .order('created_at')
-
-      if (messagesError) {
-        console.error('Error loading messages:', messagesError)
-        return
-      }
-
-      if (messagesData) {
-        setMessages(messagesData as unknown as Message[])
-      }
-    }
-
-    loadMessages()
-  }, [currentChannel, supabase])
-
-  // Set up real-time subscription
-  useEffect(() => {
-    if (!currentChannel?.id) return
-
-    const channel = supabase
-      .channel(`channel-${currentChannel.id}`, {
-        config: {
-          broadcast: { self: true },
-        },
-      })
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `channel_id=eq.${currentChannel.id}`,
-        },
-        async (payload: RealtimePostgresChangesPayload<MessageRow>) => {
-          if (!payload.new || !isMessageRow(payload.new)) return
-
-          // Fetch the complete message with sender info
-          const { data: messageData } = await supabase
-            .from('messages')
-            .select(`
-              id,
-              content,
-              created_at,
-              channel_id,
-              sender:sender_id(
-                id,
-                name,
-                email,
-                avatar_url,
-                status,
-                created_at,
-                updated_at
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single()
-
-          if (messageData) {
-            setMessages(prev => [...prev, messageData as unknown as Message])
-          }
-        }
-      )
-
-    channel.subscribe()
-
-    return () => {
-      channel.unsubscribe()
-    }
-  }, [supabase, currentChannel?.id])
-
-  const handleSendMessage = async (content: string) => {
-    if (!userData || !currentChannel) return
-
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        content,
-        channel_id: currentChannel.id,
-        sender_id: userData.id,
-      })
-
-    if (error) {
-      console.error('Error sending message:', error)
-    }
-  }
-
-  const handleChannelSelect = (channel: Channel) => {
-    setCurrentChannel(channel)
-  }
+  const userData = useUserData(user.id)
+  const { channels, currentChannel, handleChannelSelect } = useChannels()
+  const messages = useRealTimeMessages(currentChannel?.id)
+  const sendMessage = useMessageSender(userData?.id, currentChannel?.id)
 
   const userInitials = userData?.name
     ? userData.name.substring(0, 2).toUpperCase()
     : user.email?.substring(0, 2).toUpperCase() ?? '??'
+
+  const handleDirectMessageSelect = (message: { id: string; name: string }) => {
+    // TODO: Implement direct message selection
+    console.log('Selected direct message:', message)
+  }
 
   return (
     <div className="flex h-screen">
@@ -241,57 +48,18 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         </div>
 
         <ScrollArea className="flex-1">
-          {/* Channels Section */}
-          <Collapsible defaultOpen className="px-2">
-            <div className="flex items-center px-2 py-2">
-              <CollapsibleTrigger className="flex gap-2 items-center hover:text-zinc-600">
-                <ChevronDown className="w-4 h-4" />
-                <h2 className="text-sm font-semibold text-zinc-500">Channels</h2>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent>
-              <div className="px-2 space-y-1">
-                {channels.map(channel => (
-                  <Button
-                    key={channel.id}
-                    variant="ghost"
-                    className={cn(
-                      "justify-start w-full hover:bg-zinc-200",
-                      currentChannel?.id === channel.id && "bg-zinc-200"
-                    )}
-                    onClick={() => handleChannelSelect(channel)}
-                  >
-                    <Hash className="mr-2 w-4 h-4" />
-                    {channel.name}
-                  </Button>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          <ChannelList
+            channels={channels}
+            currentChannel={currentChannel}
+            onChannelSelect={handleChannelSelect}
+          />
 
           <Separator className="mx-4 my-2" />
 
-          {/* Direct Messages Section */}
-          <Collapsible defaultOpen className="px-2">
-            <div className="flex items-center px-2 py-2">
-              <CollapsibleTrigger className="flex gap-2 items-center hover:text-zinc-600">
-                <ChevronDown className="w-4 h-4" />
-                <h2 className="text-sm font-semibold text-zinc-500">Direct Messages</h2>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent>
-              <div className="px-2 space-y-1">
-                <Button variant="ghost" className="justify-start w-full hover:bg-zinc-200">
-                  <MessageSquare className="mr-2 w-4 h-4" />
-                  John Doe
-                </Button>
-                <Button variant="ghost" className="justify-start w-full hover:bg-zinc-200">
-                  <MessageSquare className="mr-2 w-4 h-4" />
-                  Jane Smith
-                </Button>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          <DirectMessagesList
+            messages={MOCK_DIRECT_MESSAGES}
+            onSelect={handleDirectMessageSelect}
+          />
         </ScrollArea>
       </div>
 
@@ -304,66 +72,18 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             <h2 className="font-semibold">{currentChannel?.name || 'Select a channel'}</h2>
           </div>
 
-          {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar>
-                  <AvatarImage src={userData?.avatar_url || undefined} alt={userData?.name || user.email || ''} />
-                  <AvatarFallback>{userInitials}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuItem disabled>{user.email}</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <form action={signOutAction}>
-                <DropdownMenuItem asChild>
-                  <button className="flex items-center w-full cursor-pointer">
-                    <LogOut className="mr-2 w-4 h-4" />
-                    Sign out
-                  </button>
-                </DropdownMenuItem>
-              </form>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserMenu
+            email={user.email || ''}
+            userData={userData}
+            userInitials={userInitials}
+          />
         </div>
 
         {/* Messages Area */}
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-6">
-            {messages.map(message => (
-              <div key={message.id} className="relative group">
-                <div className="flex gap-3 items-start">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage
-                      src={message.sender.avatar_url || undefined}
-                      alt={message.sender.name || message.sender.email}
-                    />
-                    <AvatarFallback className="text-sm font-medium">
-                      {message.sender.name
-                        ? message.sender.name.substring(0, 2).toUpperCase()
-                        : message.sender.email.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-1">
-                    <div className="flex gap-2 items-center">
-                      <span className="font-medium">{message.sender.name || message.sender.email.split('@')[0]}</span>
-                      <span className="text-xs text-zinc-500">
-                        {new Date(message.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
-                      </span>
-                    </div>
-                    <div className="text-sm" dangerouslySetInnerHTML={{ __html: message.content }} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
+        <MessageList messages={messages} />
 
         {/* Message Editor */}
-        <MessageEditor onSend={handleSendMessage} />
+        <MessageEditor onSend={sendMessage} />
       </div>
     </div>
   )
