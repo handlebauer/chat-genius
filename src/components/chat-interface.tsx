@@ -314,7 +314,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
                     <div className="flex gap-2 items-center">
                       <span className="font-medium">{message.sender.name || message.sender.email}</span>
                       <span className="text-xs text-zinc-500">
-                        {new Date(message.created_at).toLocaleTimeString()}
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                       </span>
                     </div>
                     <div className="text-sm" dangerouslySetInnerHTML={{ __html: message.content }} />
