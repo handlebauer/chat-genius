@@ -42,8 +42,10 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     <div className="flex h-screen">
       {/* Sidebar */}
       <div className="flex flex-col w-64 border-r bg-zinc-50">
-        <div className="p-4 border-b">
-          <h1 className="font-semibold">ChatGenius</h1>
+        <div className="flex items-center px-4 h-14 border-b">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-800">
+            Chat Genius
+          </h1>
         </div>
 
         <ScrollArea className="flex-1">
@@ -57,21 +59,26 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
       <div className="flex flex-col flex-1">
         {/* Chat Header */}
         <div className="flex justify-between items-center px-4 h-14 border-b">
-          <div className="flex items-center">
+          <div className="flex items-center justify-center">
             {isDM ? (
-              <Avatar className="w-5 h-5 mr-2">
-                <AvatarImage
-                  src={dmParticipant?.avatar_url || undefined}
-                  alt={channelDisplayName}
-                />
-                <AvatarFallback className="text-xs">
-                  {channelDisplayName.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <>
+                <Avatar className="w-5 h-5 mr-2">
+                  <AvatarImage
+                    src={dmParticipant?.avatar_url || undefined}
+                    alt={channelDisplayName}
+                  />
+                  <AvatarFallback className="text-xs">
+                    {channelDisplayName.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <h2 className="font-semibold">{channelDisplayName || '\u00A0'}</h2>
+              </>
             ) : (
-              <Hash className="mr-2 w-5 h-5" />
+              <>
+                {channelDisplayName && <Hash className="mr-1 w-[19px] h-[19px]" />}
+                <h2 className="font-semibold">{channelDisplayName || '\u00A0'}</h2>
+              </>
             )}
-            <h2 className="font-semibold">{channelDisplayName || '\u00A0'}</h2>
           </div>
 
           <UserMenu
