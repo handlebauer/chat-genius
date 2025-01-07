@@ -30,7 +30,12 @@ interface Message {
   id: string
   content: string
   sender: Database['public']['Tables']['users']['Row']
-  timestamp: Date
+  created_at: string
+  channel_id: string
+}
+
+type MessageWithSender = Database['public']['Tables']['messages']['Row'] & {
+  sender: Database['public']['Tables']['users']['Row']
 }
 
 type Channel = Database['public']['Tables']['channels']['Row']
@@ -42,9 +47,11 @@ interface ChatInterfaceProps {
 export function ChatInterface({ user }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
+  const [currentChannel, setCurrentChannel] = useState<Channel | null>(null)
   const [userData, setUserData] = useState<Database['public']['Tables']['users']['Row'] | null>(null)
   const supabase = createClientComponentClient<Database>()
 
+  // Load user data
   useEffect(() => {
     async function loadUserData() {
       const { data, error } = await supabase
@@ -64,6 +71,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     loadUserData()
   }, [user.id, supabase])
 
+  // Load channels and set initial channel
   useEffect(() => {
     async function loadChannels() {
       const { data, error } = await supabase
@@ -77,21 +85,117 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
       }
 
       setChannels(data)
+      // Set initial channel to #general
+      const generalChannel = data.find(channel => channel.name === 'general')
+      if (generalChannel) {
+        setCurrentChannel(generalChannel)
+      }
     }
 
     loadChannels()
   }, [supabase])
 
-  const handleSendMessage = (content: string) => {
-    if (!userData) return
+  // Load messages for current channel
+  useEffect(() => {
+    if (!currentChannel?.id) return
 
-    const newMessage: Message = {
-      id: crypto.randomUUID(),
-      content,
-      sender: userData,
-      timestamp: new Date(),
+    async function loadMessages() {
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          content,
+          created_at,
+          channel_id,
+          sender:sender_id(
+            id,
+            name,
+            email,
+            avatar_url,
+            status,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('channel_id', currentChannel?.id)
+        .order('created_at')
+
+      if (messagesError) {
+        console.error('Error loading messages:', messagesError)
+        return
+      }
+
+      if (messagesData) {
+        setMessages(messagesData as unknown as Message[])
+      }
     }
-    setMessages(prev => [...prev, newMessage])
+
+    loadMessages()
+
+    // Subscribe to new messages
+    const channelId = currentChannel.id
+    const channel = supabase
+      .channel(`channel-${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `channel_id=eq.${channelId}`,
+        },
+        async (payload) => {
+          // Fetch the complete message with sender info
+          const { data: messageData } = await supabase
+            .from('messages')
+            .select(`
+              id,
+              content,
+              created_at,
+              channel_id,
+              sender:sender_id(
+                id,
+                name,
+                email,
+                avatar_url,
+                status,
+                created_at,
+                updated_at
+              )
+            `)
+            .eq('id', payload.new.id)
+            .single()
+
+          if (messageData) {
+            setMessages(prev => [...prev, messageData as unknown as Message])
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [currentChannel, supabase])
+
+  const handleSendMessage = async (content: string) => {
+    if (!userData || !currentChannel) return
+
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        content,
+        channel_id: currentChannel.id,
+        sender_id: userData.id,
+      })
+
+    if (error) {
+      console.error('Error sending message:', error)
+    }
+  }
+
+  const handleChannelSelect = (channel: Channel) => {
+    setCurrentChannel(channel)
   }
 
   const userInitials = userData?.name
@@ -118,7 +222,15 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             <CollapsibleContent>
               <div className="px-2 space-y-1">
                 {channels.map(channel => (
-                  <Button key={channel.id} variant="ghost" className="justify-start w-full">
+                  <Button
+                    key={channel.id}
+                    variant="ghost"
+                    className={cn(
+                      "justify-start w-full",
+                      currentChannel?.id === channel.id && "bg-zinc-200"
+                    )}
+                    onClick={() => handleChannelSelect(channel)}
+                  >
                     <Hash className="mr-2 w-4 h-4" />
                     {channel.name}
                   </Button>
@@ -159,7 +271,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         <div className="flex justify-between items-center px-4 h-14 border-b">
           <div className="flex items-center">
             <Hash className="mr-2 w-5 h-5" />
-            <h2 className="font-semibold">general</h2>
+            <h2 className="font-semibold">{currentChannel?.name || 'Select a channel'}</h2>
           </div>
 
           {/* User Menu */}
@@ -202,7 +314,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
                     <div className="flex gap-2 items-center">
                       <span className="font-medium">{message.sender.name || message.sender.email}</span>
                       <span className="text-xs text-zinc-500">
-                        {message.timestamp.toLocaleTimeString()}
+                        {new Date(message.created_at).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="text-sm" dangerouslySetInnerHTML={{ __html: message.content }} />

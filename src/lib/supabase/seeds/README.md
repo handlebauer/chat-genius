@@ -4,7 +4,7 @@ This directory contains SQL seed files for initializing the database with defaul
 
 ## Files
 
-- `01_channels.sql`: Creates default channels (#general and #ai)
+- `seed.sql`: Creates default channels (#general and #ai)
 
 ## How to Use
 
