@@ -25,6 +25,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/supabase/types'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 interface Message {
   id: string
@@ -42,6 +43,25 @@ type Channel = Database['public']['Tables']['channels']['Row']
 
 interface ChatInterfaceProps {
   user: User
+}
+
+type MessageRow = {
+  id: string
+  sender_id: string
+  channel_id: string
+  thread_id: string | null
+  content: string
+  created_at: string
+  updated_at: string
+}
+
+function isMessageRow(obj: any): obj is MessageRow {
+  return (
+    obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.channel_id === 'string' &&
+    typeof obj.content === 'string'
+  )
 }
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
@@ -131,20 +151,29 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     }
 
     loadMessages()
+  }, [currentChannel, supabase])
 
-    // Subscribe to new messages
-    const channelId = currentChannel.id
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!currentChannel?.id) return
+
     const channel = supabase
-      .channel(`channel-${channelId}`)
+      .channel(`channel-${currentChannel.id}`, {
+        config: {
+          broadcast: { self: true },
+        },
+      })
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `channel_id=eq.${channelId}`,
+          filter: `channel_id=eq.${currentChannel.id}`,
         },
-        async (payload) => {
+        async (payload: RealtimePostgresChangesPayload<MessageRow>) => {
+          if (!payload.new || !isMessageRow(payload.new)) return
+
           // Fetch the complete message with sender info
           const { data: messageData } = await supabase
             .from('messages')
@@ -171,12 +200,13 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           }
         }
       )
-      .subscribe()
+
+    channel.subscribe()
 
     return () => {
       channel.unsubscribe()
     }
-  }, [currentChannel, supabase])
+  }, [supabase, currentChannel?.id])
 
   const handleSendMessage = async (content: string) => {
     if (!userData || !currentChannel) return

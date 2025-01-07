@@ -33,6 +33,10 @@ CREATE TABLE messages (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
+-- Enable realtime for messages table
+ALTER TABLE messages REPLICA IDENTITY FULL;
+ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+
 -- Create threads table
 CREATE TABLE threads (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
