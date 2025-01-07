@@ -3,13 +3,10 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { ChatInterface } from '@/components/chat-interface'
 
-interface ChatChannelPageProps {
-  params: {
-    channelId: string
-  }
-}
+type Params = Promise<{ channelId: string }>
 
-export default async function ChatChannelPage({ params }: ChatChannelPageProps) {
+const ChatChannelPage = async (props: { params: Params }) => {
+  const params = await props.params
   const cookieStore = cookies()
   const supabase = createServerComponentClient({ cookies: () => cookieStore })
 
@@ -28,4 +25,6 @@ export default async function ChatChannelPage({ params }: ChatChannelPageProps) 
 
   return <ChatInterface user={user} />
 }
+
+export default ChatChannelPage
 
