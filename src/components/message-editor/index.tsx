@@ -57,9 +57,9 @@ export function MessageEditor({ onSend, channelName = '' }: MessageEditorProps) 
   if (!channelName) return null
 
   return (
-    <div className="p-4 border-t">
+    <div className="p-4">
       <div
-        className="relative rounded-lg border border-input bg-background/80 transition-all duration-200 hover:bg-background focus-within:bg-background focus-within:border-primary/50 focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.14)] group cursor-text"
+        className="relative rounded-lg border border-input bg-background/80 transition-all duration-200 hover:bg-background focus-within:bg-background focus-within:border-zinc-400 focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.2)] group cursor-text"
         onClick={handleContainerClick}
       >
         <div className="flex flex-col">

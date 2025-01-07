@@ -14,8 +14,8 @@ export function ToolbarButtons({ editor }: ToolbarButtonsProps) {
         variant="ghost"
         size="sm"
         className={cn(
-          'h-8 w-8 p-0 hover:bg-transparent',
-          editor?.isActive('bold') && 'text-primary'
+          'h-8 w-8 p-0 hover:bg-transparent text-zinc-400 group-focus-within:text-zinc-600 transition-colors',
+          editor?.isActive('bold') && 'text-zinc-900'
         )}
         onClick={() => editor?.chain().focus().toggleBold().run()}
       >
@@ -25,8 +25,8 @@ export function ToolbarButtons({ editor }: ToolbarButtonsProps) {
         variant="ghost"
         size="sm"
         className={cn(
-          'h-8 w-8 p-0 hover:bg-transparent',
-          editor?.isActive('italic') && 'text-primary'
+          'h-8 w-8 p-0 hover:bg-transparent text-zinc-400 group-focus-within:text-zinc-600 transition-colors',
+          editor?.isActive('italic') && 'text-zinc-900'
         )}
         onClick={() => editor?.chain().focus().toggleItalic().run()}
       >
@@ -36,8 +36,8 @@ export function ToolbarButtons({ editor }: ToolbarButtonsProps) {
         variant="ghost"
         size="sm"
         className={cn(
-          'h-8 w-8 p-0 hover:bg-transparent',
-          editor?.isActive('strike') && 'text-primary'
+          'h-8 w-8 p-0 hover:bg-transparent text-zinc-400 group-focus-within:text-zinc-600 transition-colors',
+          editor?.isActive('strike') && 'text-zinc-900'
         )}
         onClick={() => editor?.chain().focus().toggleStrike().run()}
       >

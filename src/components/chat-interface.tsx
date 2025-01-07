@@ -44,7 +44,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
       <div className="flex flex-col w-64 border-r bg-zinc-50">
         <div className="flex items-center px-4 h-14 border-b">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-800">
-            Chat Genius
+            ChatGenius
           </h1>
         </div>
 
@@ -71,12 +71,12 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
                     {channelDisplayName.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <h2 className="font-semibold">{channelDisplayName || '\u00A0'}</h2>
+                <h2 className="font-medium text-zinc-900">{channelDisplayName || '\u00A0'}</h2>
               </>
             ) : (
               <>
-                {channelDisplayName && <Hash className="mr-1 w-[19px] h-[19px]" />}
-                <h2 className="font-semibold">{channelDisplayName || '\u00A0'}</h2>
+                {channelDisplayName && <Hash className="mr-[2px] w-[18px] h-[18px] text-zinc-900" />}
+                <h2 className="font-medium text-zinc-900">{channelDisplayName?.toLowerCase() || '\u00A0'}</h2>
               </>
             )}
           </div>

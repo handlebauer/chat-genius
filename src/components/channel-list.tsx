@@ -32,7 +32,7 @@ function ChannelButton({
       )}
       onClick={onClick}
     >
-      <Hash className="mr-2 w-4 h-4" />
+      <Hash className="w-4 h-4" />
       {channel.name}
     </Button>
   )
@@ -60,7 +60,7 @@ export function ChannelList() {
     <Collapsible defaultOpen className="px-2">
       <ChannelListHeader />
       <CollapsibleContent>
-        <div className="px-2 space-y-1">
+        <div className="pl-3 space-y-1">
           {regularChannels.map(channel => (
             <ChannelButton
               key={channel.id}
