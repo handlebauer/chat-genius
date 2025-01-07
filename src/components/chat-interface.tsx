@@ -14,22 +14,25 @@ import { useMessageSender } from '@/hooks/use-message-sender'
 import { DirectMessagesList } from '@/components/direct-messages-list'
 import { useStore } from '@/lib/store'
 import type { Database } from '@/lib/supabase/types'
+import { useParams } from 'next/navigation'
+import { MessagesSection } from './messages-section'
 
 interface ChatInterfaceProps {
   user: User
 }
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
-  const { activeChannelId, channels } = useStore()
+  const { channelId } = useParams() as { channelId: string }
+  const { channels } = useStore()
   const userData = useUserData(user.id) as Database['public']['Tables']['users']['Row'] | null
-  const messages = useRealTimeMessages(activeChannelId || undefined)
-  const sendMessage = useMessageSender(userData?.id, activeChannelId || undefined)
+  const messages = useRealTimeMessages(channelId)
+  const sendMessage = useMessageSender(userData?.id, channelId)
 
   const userInitials = userData?.name
     ? userData.name.substring(0, 2).toUpperCase()
     : user.email?.substring(0, 2).toUpperCase() ?? '??'
 
-  const currentChannel = channels.find(channel => channel.id === activeChannelId)
+  const currentChannel = channels.find(channel => channel.id === channelId)
 
   return (
     <div className="flex h-screen">
@@ -63,7 +66,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         </div>
 
         {/* Messages Area */}
-        <MessageList messages={messages} />
+        <MessagesSection messages={messages} />
 
         {/* Message Editor */}
         <MessageEditor channelName={currentChannel?.name} onSend={sendMessage} />

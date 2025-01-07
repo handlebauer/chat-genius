@@ -8,12 +8,13 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible"
-import { useStore } from '@/lib/store'
 import { useChannels } from '@/hooks/use-channels'
+import { useRouter, useParams } from 'next/navigation'
 
 export function ChannelList() {
-  const { activeChannelId, setActiveChannelId } = useStore()
   const { channels } = useChannels()
+  const router = useRouter()
+  const { channelId } = useParams() as { channelId: string }
 
   return (
     <Collapsible defaultOpen className="px-2">
@@ -31,9 +32,9 @@ export function ChannelList() {
               variant="ghost"
               className={cn(
                 "justify-start w-full hover:bg-zinc-200",
-                activeChannelId === channel.id && "bg-zinc-200"
+                channelId === channel.id && "bg-zinc-200"
               )}
-              onClick={() => setActiveChannelId(channel.id)}
+              onClick={() => router.push(`/chat/${channel.id}`)}
             >
               <Hash className="mr-2 w-4 h-4" />
               {channel.name}
