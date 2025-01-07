@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 
 import { Button } from '@/components/ui/button'
 import { Circle } from 'lucide-react'
@@ -27,12 +27,22 @@ export function DirectMessagesList({ userId }: { userId: string }) {
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent>
-        <div className="px-2 space-y-1">
+        <div className="px-2">
+          {currentUser && (
+            <Button
+              key={currentUser.id}
+              variant="ghost"
+              className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto"
+            >
+              <Circle className="scale-[0.5] text-green-500 fill-current" />
+              {currentUser.name || currentUser.email} <span className="text-zinc-400 ml-1 text-[13px] inline-flex items-center font-extralight">you</span>
+            </Button>
+          )}
           {otherOnlineUsers.map(user => (
             <Button
               key={user.id}
               variant="ghost"
-              className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200"
+              className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto"
             >
               <Circle className="scale-[0.5] text-green-500 fill-current" />
               {user.name || user.email}
