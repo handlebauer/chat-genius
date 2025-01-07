@@ -3,10 +3,10 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Hash } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
-import { MessageEditor } from '@/components/message-editor'
 import { User } from '@supabase/supabase-js'
 import { MessageList } from './message-list'
 import { ChannelList } from './channel-list'
+import { MessageEditor } from './message-editor'
 import { UserMenu } from './user-menu'
 import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
 import { useUserData } from '@/hooks/use-user-data'
@@ -18,7 +18,6 @@ interface ChatInterfaceProps {
   user: User
 }
 
-// Temporary mock data for direct messages
 const MOCK_DIRECT_MESSAGES = [
   { id: '1', name: 'John Doe' },
   { id: '2', name: 'Jane Smith' },
@@ -80,7 +79,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         <MessageList messages={messages} />
 
         {/* Message Editor */}
-        <MessageEditor onSend={sendMessage} />
+        <MessageEditor channelName={currentChannel?.name} onSend={sendMessage} />
       </div>
     </div>
   )
