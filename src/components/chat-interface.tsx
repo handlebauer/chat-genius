@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -309,6 +309,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar>
+                  <AvatarImage src={userData?.avatar_url || undefined} alt={userData?.name || user.email || ''} />
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
@@ -335,11 +336,17 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             {messages.map(message => (
               <div key={message.id} className="relative group">
                 <div className="flex gap-3 items-start">
-                  <div className="flex justify-center items-center w-8 h-8 text-sm font-medium rounded-full bg-zinc-200 shrink-0">
-                    {message.sender.name
-                      ? message.sender.name.substring(0, 2).toUpperCase()
-                      : message.sender.email.substring(0, 2).toUpperCase()}
-                  </div>
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage
+                      src={message.sender.avatar_url || undefined}
+                      alt={message.sender.name || message.sender.email}
+                    />
+                    <AvatarFallback className="text-sm font-medium">
+                      {message.sender.name
+                        ? message.sender.name.substring(0, 2).toUpperCase()
+                        : message.sender.email.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="space-y-1">
                     <div className="flex gap-2 items-center">
                       <span className="font-medium">{message.sender.name || message.sender.email.split('@')[0]}</span>
