@@ -25,13 +25,15 @@ function isMessageRow(obj: any): obj is MessageRow {
 
 export function useRealTimeMessages(channelId: string | undefined) {
   const supabase = createClientComponentClient<Database>()
-  const { messages, setMessages, addMessage } = useStore()
+  const { messages, setMessages, setMessagesLoading, addMessage } = useStore()
 
   // Load initial messages
   useEffect(() => {
     if (!channelId) return
 
     async function loadMessages() {
+      setMessagesLoading(channelId, true)
+
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select(`
@@ -54,16 +56,19 @@ export function useRealTimeMessages(channelId: string | undefined) {
 
       if (messagesError) {
         console.error('Error loading messages:', messagesError)
+        setMessagesLoading(channelId, false)
         return
       }
 
       if (messagesData) {
         setMessages(channelId, messagesData as any)
       }
+
+      setMessagesLoading(channelId, false)
     }
 
     loadMessages()
-  }, [channelId, supabase, setMessages])
+  }, [channelId, supabase, setMessages, setMessagesLoading])
 
   // Set up real-time subscription
   useEffect(() => {
@@ -120,5 +125,8 @@ export function useRealTimeMessages(channelId: string | undefined) {
     }
   }, [supabase, channelId, addMessage])
 
-  return channelId ? messages[channelId] || [] : []
+  return {
+    messages: channelId ? messages[channelId] || [] : [],
+    loading: channelId ? useStore.getState().messagesLoading[channelId] || false : false
+  }
 }

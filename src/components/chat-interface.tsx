@@ -25,7 +25,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
   const { channelId } = useParams() as { channelId: string }
   const { channels } = useStore()
   const userData = useUserData(user.id) as Database['public']['Tables']['users']['Row'] | null
-  const messages = useRealTimeMessages(channelId)
+  const { messages, loading } = useRealTimeMessages(channelId)
   const sendMessage = useMessageSender(userData?.id, channelId)
 
   const userInitials = userData?.name
@@ -66,7 +66,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         </div>
 
         {/* Messages Area */}
-        <MessagesSection messages={messages} />
+        <MessagesSection messages={messages} loading={loading} />
 
         {/* Message Editor */}
         <MessageEditor channelName={currentChannel?.name} onSend={sendMessage} />

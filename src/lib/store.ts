@@ -36,8 +36,10 @@ interface UserData {
 // Store interfaces
 interface MessagesState {
   messages: Record<string, Message[]> // Keyed by channel_id
+  messagesLoading: Record<string, boolean> // Loading state for each channel
   addMessage: (channelId: string | undefined, message: Message) => void
   setMessages: (channelId: string | undefined, messages: Message[]) => void
+  setMessagesLoading: (channelId: string | undefined, loading: boolean) => void
 }
 
 interface OnlineUsersState {
@@ -64,6 +66,7 @@ interface Store extends MessagesState, OnlineUsersState, UserState, ChannelsStat
 export const useStore = create<Store>((set) => ({
   // Messages slice
   messages: {},
+  messagesLoading: {},
   addMessage: (channelId, message) => {
     if (typeof channelId !== 'string') return
     set((state) => ({
@@ -79,6 +82,15 @@ export const useStore = create<Store>((set) => ({
       messages: {
         ...state.messages,
         [channelId]: messages,
+      },
+    }))
+  },
+  setMessagesLoading: (channelId, loading) => {
+    if (typeof channelId !== 'string') return
+    set((state) => ({
+      messagesLoading: {
+        ...state.messagesLoading,
+        [channelId]: loading,
       },
     }))
   },

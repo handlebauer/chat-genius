@@ -31,8 +31,8 @@ export function ChannelList() {
               key={channel.id}
               variant="ghost"
               className={cn(
-                "justify-start w-full hover:bg-zinc-200",
-                channelId === channel.id && "bg-zinc-200"
+                "justify-start w-full hover:bg-zinc-100",
+                channelId === channel.id && "bg-zinc-200 hover:bg-zinc-200"
               )}
               onClick={() => router.push(`/chat/${channel.id}`)}
             >
