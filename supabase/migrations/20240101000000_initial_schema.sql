@@ -64,8 +64,12 @@ CREATE TABLE messages (
     thread_id UUID,
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+    search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED
 );
+
+-- Create index for full-text search
+CREATE INDEX messages_search_idx ON messages USING GIN (search_vector);
 
 -- Enable realtime for messages table
 ALTER TABLE messages REPLICA IDENTITY FULL;

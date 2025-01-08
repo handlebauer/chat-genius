@@ -108,14 +108,13 @@ export async function searchMessages({
       created_at,
       channel_id,
       sender_id,
-      sender_name,
       sender:sender_id (
         id,
         name,
         avatar_url
       )
     `, { count: 'exact' })
-    .textSearch('search_vector', query, {
+    .textSearch('search_vector', query.trim(), {
       type: 'websearch',
       config: 'english'
     })
