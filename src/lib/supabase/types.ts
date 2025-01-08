@@ -111,6 +111,8 @@ export interface Database {
           content: string
           created_at: string
           updated_at: string
+          sender_name: string | null
+          search_vector: unknown
         }
         Insert: {
           id?: string
@@ -120,6 +122,7 @@ export interface Database {
           content: string
           created_at?: string
           updated_at?: string
+          sender_name?: string | null
         }
         Update: {
           id?: string
@@ -129,6 +132,7 @@ export interface Database {
           content?: string
           created_at?: string
           updated_at?: string
+          sender_name?: string | null
         }
       }
       threads: {
