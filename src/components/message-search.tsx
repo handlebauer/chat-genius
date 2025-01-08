@@ -7,8 +7,9 @@ import { Search, Loader2 } from 'lucide-react';
 import { searchMessages } from '@/lib/actions';
 import { useStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
+import { SearchResults } from './search-results';
 
-interface SearchResult {
+export interface SearchResult {
   messages: Array<{
     id: string;
     content: string;
@@ -29,63 +30,60 @@ interface SearchResult {
   hasMore: boolean;
 }
 
-function escapeRegExp(string: string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+interface UseKeyboardNavigationProps<T> {
+  items: T[] | undefined;
+  isVisible: boolean;
+  onSelect: (item: T) => void;
+  onClose: () => void;
 }
 
-function stripHtml(html: string): string {
-  // First replace common block elements with spaces to preserve readability
-  const withLineBreaks = html.replace(/<\/(p|div|br)>/gi, ' ');
-  // Strip all remaining HTML tags
-  const stripped = withLineBreaks.replace(/<[^>]+>/g, '');
-  // Normalize whitespace (convert multiple spaces to single space)
-  const normalized = stripped.replace(/\s+/g, ' ');
-  // Decode HTML entities
-  const decoded = normalized.replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-  return decoded.trim();
-}
+function useKeyboardNavigation<T>({
+  items,
+  isVisible,
+  onSelect,
+  onClose
+}: UseKeyboardNavigationProps<T>) {
+  const [selectedIndex, setSelectedIndex] = useState(-1);
 
-function highlightText(text: string, query: string) {
-  if (!query.trim()) {
-    return stripHtml(text);
-  }
+  // Reset selected index when items change
+  useEffect(() => {
+    setSelectedIndex(items?.length ? 0 : -1);
+  }, [items]);
 
-  // First strip HTML from the text
-  const strippedText = stripHtml(text);
+  // Handle keyboard navigation
+  useEvent(window, 'keydown', (e: KeyboardEvent) => {
+    if (!isVisible || !items?.length) return;
 
-  // Split query into words and create a regex that matches any of them
-  const words = query.trim().split(/\s+/);
-  const regex = new RegExp(`(${words.map(word => escapeRegExp(word)).join('|')})`, 'gi');
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex(prev =>
+          prev < items.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex(prev => prev > -1 ? prev - 1 : prev);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedIndex >= 0 && items[selectedIndex]) {
+          onSelect(items[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        onClose();
+        setSelectedIndex(-1);
+        break;
+    }
+  });
 
-  return strippedText.split(regex).map((part, i) =>
-    regex.test(part) ? (
-      <span key={i} className="bg-yellow-200 rounded-sm">{part}</span>
-    ) : (
-      part
-    )
-  );
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  if (days === 0) {
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  } else if (days === 1) {
-    return 'Yesterday';
-  } else if (days < 7) {
-    return date.toLocaleDateString(undefined, { weekday: 'long' });
-  } else {
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
+  return {
+    selectedIndex,
+    setSelectedIndex
+  };
 }
 
 export function MessageSearch() {
@@ -97,19 +95,33 @@ export function MessageSearch() {
   const router = useRouter();
   const { selectMessage, setActiveChannelId } = useStore();
 
-  // Debounce the search query
-  const [debouncedQuery] = useDebounce(query, 300);
+  const handleMessageSelect = async (message: SearchResult['messages'][0]) => {
+    setActiveChannelId(message.channel_id);
+    router.push(`/chat/${message.channel_id}`);
+    selectMessage(message.id);
+    setShowResults(false);
+    setQuery('');
+    inputRef.current?.blur();
+  };
 
-  // Add keyboard shortcut listener
+  const handleClose = () => {
+    setShowResults(false);
+    inputRef.current?.blur();
+  };
+
+  const { selectedIndex, setSelectedIndex } = useKeyboardNavigation({
+    items: results?.messages,
+    isVisible: showResults,
+    onSelect: handleMessageSelect,
+    onClose: handleClose
+  });
+
+  // Cmd+K shortcut listener
   useEvent(window, 'keydown', (e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
       inputRef.current?.focus();
       setShowResults(true);
-    }
-    if (e.key === 'Escape') {
-      setShowResults(false);
-      inputRef.current?.blur();
     }
   });
 
@@ -117,9 +129,12 @@ export function MessageSearch() {
   useEvent(window, 'click', (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.closest('.search-container')) {
-      setShowResults(false);
+      handleClose();
     }
   });
+
+  // Debounce the search query
+  const [debouncedQuery] = useDebounce(query, 300);
 
   // Perform search when debounced query changes
   useEffect(() => {
@@ -148,20 +163,6 @@ export function MessageSearch() {
     performSearch();
   }, [debouncedQuery]);
 
-  const handleMessageSelect = async (message: SearchResult['messages'][0]) => {
-    // First, switch to the correct channel if needed
-    setActiveChannelId(message.channel_id);
-    router.push(`/chat/${message.channel_id}`);
-
-    // Set the selected message to trigger scrolling and highlighting
-    selectMessage(message.id);
-
-    // Close the search results
-    setShowResults(false);
-    setQuery('');
-    inputRef.current?.blur();
-  };
-
   return (
     <div className="relative search-container">
       <div className="relative">
@@ -180,41 +181,17 @@ export function MessageSearch() {
         )}
       </div>
 
-      {/* Results dropdown */}
       {showResults && (query.trim() || isLoading) && (
         <div className="absolute right-0 mt-1 w-[300px] rounded-md border border-zinc-200 bg-white shadow-lg z-50">
           <div className="max-h-96 overflow-auto py-1">
-            {isLoading ? (
-              <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
-            ) : results?.messages.length ? (
-              results.messages.map((message) => (
-                <button
-                  key={message.id}
-                  onClick={() => handleMessageSelect(message)}
-                  className="w-full px-4 py-3 text-left hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none border-b border-zinc-100 last:border-0"
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {highlightText(message.sender.name, query)}
-                      </span>
-                      <span className="text-xs text-zinc-500">
-                        {message.channel.type === 'direct_message' ? '@' : '#'}
-                        {message.channel.name}
-                      </span>
-                    </div>
-                    <span className="text-xs text-zinc-400">
-                      {formatDate(message.created_at)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-zinc-600 line-clamp-2">
-                    {highlightText(message.content, query)}
-                  </p>
-                </button>
-              ))
-            ) : query.trim() ? (
-              <div className="px-4 py-2 text-sm text-gray-500">No results found</div>
-            ) : null}
+            <SearchResults
+              results={results}
+              isLoading={isLoading}
+              query={query}
+              selectedIndex={selectedIndex}
+              onSelect={handleMessageSelect}
+              onHover={setSelectedIndex}
+            />
           </div>
         </div>
       )}
