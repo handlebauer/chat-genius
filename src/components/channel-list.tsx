@@ -52,9 +52,9 @@ function DeleteChannelDialog({
         <Button
           variant="ghost"
           size="sm"
-          className="px-2 h-6 w-6 hover:bg-zinc-400/50 rounded-sm"
+          className="px-2 h-6 w-6 hover:bg-zinc-50/50 rounded-sm"
         >
-          <Trash2 className="h-4 w-4 text-zinc-800 transition-colors" />
+          <Trash2 className="h-4 w-4 text-zinc-600 hover:text-zinc-400 transition-colors" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -97,7 +97,7 @@ function ChannelButton({
         variant="ghost"
         onClick={onClick}
         className={cn(
-          "flex items-center gap-2 justify-start w-full hover:bg-zinc-200 py-1 h-auto",
+          "flex items-center gap-2 justify-start w-full hover:bg-zinc-200 group-hover:bg-zinc-200 py-1 h-auto",
           isActive && "bg-zinc-200"
         )}
       >
@@ -124,7 +124,7 @@ function ChannelListHeader() {
         <Button
           variant="ghost"
           size="sm"
-          className="px-2 h-6 w-6 hover:bg-zinc-400/50 rounded-sm"
+          className="px-2 h-6 w-6 hover:bg-zinc-200 rounded-sm"
         >
           <Plus className="h-4 w-4 text-zinc-800 transition-colors" />
         </Button>
@@ -176,7 +176,7 @@ export function ChannelList() {
       <Collapsible defaultOpen className="px-2">
         <ChannelListHeader />
         <CollapsibleContent>
-          <div className="px-2">
+          <div className="px-2 flex flex-col gap-1">
             {regularChannels.map(channel => (
               <ChannelButton
                 key={channel.id}
