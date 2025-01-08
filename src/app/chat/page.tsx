@@ -1,10 +1,8 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerComponent } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export default async function ChatPage() {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createServerComponent()
 
   const { data: { user } } = await supabase.auth.getUser()
 
