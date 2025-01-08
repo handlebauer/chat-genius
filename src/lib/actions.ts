@@ -71,10 +71,15 @@ interface Message {
 
 interface SearchMessage extends Message {
   rank: number;
+  channel: {
+    name: string;
+    type: string;
+  };
 }
 
 type DatabaseMessageWithRank = Database['public']['Tables']['messages']['Row'] & {
   sender: Pick<Database['public']['Tables']['users']['Row'], 'id' | 'name' | 'avatar_url'> | null;
+  channel: Pick<Database['public']['Tables']['channels']['Row'], 'name' | 'channel_type'>;
   rank: number;
 };
 
@@ -112,6 +117,10 @@ export async function searchMessages({
         id,
         name,
         avatar_url
+      ),
+      channel:channel_id (
+        name,
+        channel_type
       )
     `, { count: 'exact' })
     .textSearch('search_vector', query.trim(), {
@@ -171,7 +180,11 @@ export async function searchMessages({
       id: 'deleted',
       name: 'Deleted User'
     },
-    rank: 1 // Since we can't get the rank directly, we'll just use 1 for now
+    channel: {
+      name: message.channel.name,
+      type: message.channel.channel_type
+    },
+    rank: 1
   }));
 
   return {

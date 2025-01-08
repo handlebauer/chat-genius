@@ -19,6 +19,10 @@ interface SearchResult {
       name: string;
       avatar_url?: string | null;
     };
+    channel: {
+      name: string;
+      type: string;
+    };
     rank: number;
   }>;
   total: number;
@@ -170,9 +174,15 @@ export function MessageSearch() {
                   className="w-full px-4 py-3 text-left hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none border-b border-zinc-100 last:border-0"
                 >
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="font-medium text-sm">
-                      {highlightText(message.sender.name, query)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        {highlightText(message.sender.name, query)}
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        {message.channel.type === 'direct_message' ? '@' : '#'}
+                        {message.channel.name}
+                      </span>
+                    </div>
                     <span className="text-xs text-zinc-400">
                       {formatDate(message.created_at)}
                     </span>
