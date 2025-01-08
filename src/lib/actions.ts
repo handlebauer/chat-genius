@@ -193,3 +193,76 @@ export async function searchMessages({
     hasMore: offset + limit < count
   };
 }
+
+export async function createChannel(name: string, userId: string) {
+  'use server'
+
+  console.log('[CreateChannel] Starting with:', { name, userId })
+  const supabase = createServerActionClient<Database>({ cookies })
+
+  // Check if channel already exists
+  const { data: existingChannel, error: existingError } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('name', name.toLowerCase())
+    .single()
+
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.error('[CreateChannel] Error checking existing channel:', existingError)
+    throw new Error(`Failed to check existing channel: ${existingError.message}`)
+  }
+
+  if (existingChannel) {
+    console.log('[CreateChannel] Channel already exists:', existingChannel)
+    throw new Error('Channel already exists')
+  }
+
+  // Create new channel
+  const { data: newChannel, error: createError } = await supabase
+    .from('channels')
+    .insert({
+      name: name.toLowerCase(),
+      channel_type: 'channel',
+      is_private: false,
+      created_by: userId
+    })
+    .select()
+    .single()
+
+  if (createError) {
+    console.error('[CreateChannel] Error creating channel:', createError)
+    throw new Error(`Failed to create channel: ${createError.message}`)
+  }
+
+  console.log('[CreateChannel] Successfully created channel:', newChannel)
+  revalidatePath('/chat')
+  return newChannel
+}
+
+export async function deleteChannel(channelId: string, userId: string) {
+  'use server'
+
+  const supabase = createServerActionClient<Database>({ cookies })
+
+  // Check if user is the channel creator
+  const { data: channel } = await supabase
+    .from('channels')
+    .select('created_by')
+    .eq('id', channelId)
+    .single()
+
+  if (!channel || channel.created_by !== userId) {
+    throw new Error('Not authorized to delete this channel')
+  }
+
+  const { error: deleteError } = await supabase
+    .from('channels')
+    .delete()
+    .eq('id', channelId)
+
+  if (deleteError) {
+    throw new Error('Failed to delete channel')
+  }
+
+  revalidatePath('/chat')
+}

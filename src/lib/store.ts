@@ -54,6 +54,9 @@ interface ChannelsState {
   setActiveChannelId: (id: string | null) => void
   getCurrentChannel: () => Channel | undefined
   getDMParticipant: (channelId: string | null, currentUserId: string) => UserData | null
+  addChannel: (channel: Channel) => void
+  removeChannel: (channelId: string) => void
+  canDeleteChannel: (channelId: string, userId: string) => boolean
 }
 
 // Combined store type
@@ -156,5 +159,16 @@ export const useStore = create<Store>((set, get) => ({
 
     return null
   },
+  addChannel: (channel) => set((state) => ({
+    channels: [...state.channels, channel]
+  })),
+  removeChannel: (channelId) => set((state) => ({
+    channels: state.channels.filter(c => c.id !== channelId),
+    activeChannelId: state.activeChannelId === channelId ? null : state.activeChannelId
+  })),
+  canDeleteChannel: (channelId, userId) => {
+    const channel = get().channels.find(c => c.id === channelId)
+    return channel?.created_by === userId
+  }
 }))
 

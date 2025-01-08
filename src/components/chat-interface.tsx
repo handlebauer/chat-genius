@@ -13,7 +13,6 @@ import { useStore } from '@/lib/store'
 import { useParams } from 'next/navigation'
 import { MessagesSection } from './messages-section'
 import { ChatHeader } from './chat-header'
-import { useEffect } from 'react'
 
 import type { Database } from '@/lib/supabase/types'
 
