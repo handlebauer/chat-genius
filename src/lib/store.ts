@@ -12,11 +12,15 @@ interface Message {
   attachments?: Database['public']['Tables']['attachments']['Row'][]
 }
 
+export type UserStatus = 'online' | 'away' | 'offline'
+
 interface OnlineUser {
   id: string
   name: string
   email: string | undefined
   last_seen: string
+  last_active: string
+  status: UserStatus
 }
 
 type Channel = Database['public']['Tables']['channels']['Row']
