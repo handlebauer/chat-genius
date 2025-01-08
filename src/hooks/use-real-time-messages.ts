@@ -49,6 +49,16 @@ export function useRealTimeMessages(channelId: string | undefined) {
             status,
             created_at,
             updated_at
+          ),
+          attachments(
+            id,
+            file_name,
+            file_size,
+            file_type,
+            storage_path,
+            content_type,
+            created_at,
+            updated_at
           )
         `)
         .eq('channel_id', channelId)
@@ -105,6 +115,16 @@ export function useRealTimeMessages(channelId: string | undefined) {
                 email,
                 avatar_url,
                 status,
+                created_at,
+                updated_at
+              ),
+              attachments(
+                id,
+                file_name,
+                file_size,
+                file_type,
+                storage_path,
+                content_type,
                 created_at,
                 updated_at
               )

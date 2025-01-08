@@ -3,6 +3,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Database } from '@/lib/supabase/types'
+import { MessageAttachments } from './message-attachments'
 
 interface Message {
   id: string
@@ -10,6 +11,7 @@ interface Message {
   sender: Database['public']['Tables']['users']['Row']
   created_at: string
   channel_id: string
+  attachments?: Database['public']['Tables']['attachments']['Row'][]
 }
 
 interface MessageListProps {
@@ -42,6 +44,7 @@ export function MessageList({ messages }: MessageListProps) {
                   </span>
                 </div>
                 <div className="text-[13px] leading-relaxed text-zinc-800" dangerouslySetInnerHTML={{ __html: message.content }} />
+                {message.attachments && <MessageAttachments attachments={message.attachments} />}
               </div>
             </div>
           </div>

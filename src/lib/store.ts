@@ -9,6 +9,7 @@ interface Message {
   sender: Database['public']['Tables']['users']['Row']
   created_at: string
   channel_id: string
+  attachments?: Database['public']['Tables']['attachments']['Row'][]
 }
 
 interface OnlineUser {
