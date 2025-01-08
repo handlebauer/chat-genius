@@ -49,7 +49,7 @@ interface ChannelsState {
   setChannelsLoading: (loading: boolean) => void
   activeChannelId: string | null
   setActiveChannelId: (id: string | null) => void
-  getChannelDisplayName: (channelId: string | null, currentUserId: string) => string
+  getCurrentChannel: () => Channel | undefined
   getDMParticipant: (channelId: string | null, currentUserId: string) => UserData | null
 }
 
@@ -104,6 +104,10 @@ export const useStore = create<Store>((set, get) => ({
   setChannelsLoading: (loading) => set({ channelsLoading: loading }),
   activeChannelId: null,
   setActiveChannelId: (id) => set({ activeChannelId: id }),
+  getCurrentChannel: () => {
+    const { channels, activeChannelId } = get()
+    return channels.find(channel => channel.id === activeChannelId)
+  },
   getDMParticipant: (channelId, currentUserId) => {
     const state = get()
     const channel = state.channels.find(c => c.id === channelId)
@@ -137,21 +141,5 @@ export const useStore = create<Store>((set, get) => ({
 
     return null
   },
-  getChannelDisplayName: (channelId, currentUserId) => {
-    const state = get()
-
-    // If channels are still loading, return empty string to avoid flashing
-    if (state.channelsLoading) return ''
-
-    const channel = state.channels.find(c => c.id === channelId)
-    if (!channel) return ''
-
-    if (channel.channel_type === 'direct_message') {
-      const participant = get().getDMParticipant(channelId, currentUserId)
-      return participant?.name || participant?.email || ''
-    }
-
-    return channel.name || ''
-  }
 }))
 
