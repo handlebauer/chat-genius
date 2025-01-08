@@ -33,16 +33,36 @@ function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function stripHtml(html: string): string {
+  // First replace common block elements with spaces to preserve readability
+  const withLineBreaks = html.replace(/<\/(p|div|br)>/gi, ' ');
+  // Strip all remaining HTML tags
+  const stripped = withLineBreaks.replace(/<[^>]+>/g, '');
+  // Normalize whitespace (convert multiple spaces to single space)
+  const normalized = stripped.replace(/\s+/g, ' ');
+  // Decode HTML entities
+  const decoded = normalized.replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  return decoded.trim();
+}
+
 function highlightText(text: string, query: string) {
   if (!query.trim()) {
-    return text;
+    return stripHtml(text);
   }
+
+  // First strip HTML from the text
+  const strippedText = stripHtml(text);
 
   // Split query into words and create a regex that matches any of them
   const words = query.trim().split(/\s+/);
   const regex = new RegExp(`(${words.map(word => escapeRegExp(word)).join('|')})`, 'gi');
 
-  return text.split(regex).map((part, i) =>
+  return strippedText.split(regex).map((part, i) =>
     regex.test(part) ? (
       <span key={i} className="bg-yellow-200 rounded-sm">{part}</span>
     ) : (
