@@ -92,14 +92,6 @@ export default function LoginPage() {
 
             <div className="flex flex-col gap-3 w-full max-w-xs px-0">
               <button
-                onClick={() => signInWithGoogle()}
-                className="flex items-center justify-center gap-3 bg-white/90 backdrop-blur-sm border-2 border-[#e34133] text-[#e34133] px-0 py-3.5 rounded-xl font-medium transition-all hover:bg-[#e34133] hover:text-white"
-              >
-                <FaGoogle className="text-xl" />
-                Sign in with Google
-              </button>
-
-              <button
                 onClick={() => signInWithDiscord()}
                 className="flex items-center justify-center gap-3 bg-white/90 backdrop-blur-sm border-2 border-[#5865F2] text-[#5865F2] px-0 py-3.5 rounded-xl font-medium transition-all hover:bg-[#5865F2] hover:text-white"
               >
@@ -113,6 +105,14 @@ export default function LoginPage() {
               >
                 <FaGithub className="text-xl" />
                 Sign in with GitHub
+              </button>
+
+              <button
+                onClick={() => signInWithGoogle()}
+                className="flex items-center justify-center gap-3 bg-white/90 backdrop-blur-sm border-2 border-[#e34133] text-[#e34133] px-0 py-3.5 rounded-xl font-medium transition-all hover:bg-[#e34133] hover:text-white"
+              >
+                <FaGoogle className="text-xl" />
+                Sign in with Google
               </button>
             </div>
           </div>
