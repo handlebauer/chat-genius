@@ -84,7 +84,7 @@ export function MessageEditor({ onSend, channelName = '', userId }: MessageEdito
   if (!channelName) return null
 
   return (
-    <div className="p-4 pt-1">
+    <div className="p-4 pt-0">
       <div
         className="relative rounded-lg border border-input bg-background/80 transition-all duration-200 hover:bg-background focus-within:bg-background focus-within:border-zinc-400 focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.2)] group cursor-text"
         onClick={handleContainerClick}

@@ -5,6 +5,8 @@ import { useDebounce } from 'use-debounce';
 import useEvent from '@react-hook/event';
 import { Search, Loader2 } from 'lucide-react';
 import { searchMessages } from '@/lib/actions';
+import { useStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
 
 interface SearchResult {
   messages: Array<{
@@ -68,6 +70,8 @@ export function MessageSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const { selectMessage, setActiveChannelId } = useStore();
 
   // Debounce the search query
   const [debouncedQuery] = useDebounce(query, 300);
@@ -120,6 +124,20 @@ export function MessageSearch() {
     performSearch();
   }, [debouncedQuery]);
 
+  const handleMessageSelect = async (message: SearchResult['messages'][0]) => {
+    // First, switch to the correct channel if needed
+    setActiveChannelId(message.channel_id);
+    router.push(`/chat/${message.channel_id}`);
+
+    // Set the selected message to trigger scrolling and highlighting
+    selectMessage(message.id);
+
+    // Close the search results
+    setShowResults(false);
+    setQuery('');
+    inputRef.current?.blur();
+  };
+
   return (
     <div className="relative w-full max-w-md search-container">
       <div className="relative">
@@ -148,10 +166,7 @@ export function MessageSearch() {
               results.messages.map((message) => (
                 <button
                   key={message.id}
-                  onClick={() => {
-                    console.log('Selected message:', message);
-                    setShowResults(false);
-                  }}
+                  onClick={() => handleMessageSelect(message)}
                   className="w-full px-4 py-3 text-left hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none border-b border-zinc-100 last:border-0"
                 >
                   <div className="flex items-center justify-between gap-2 mb-1">

@@ -27,9 +27,12 @@ type UserData = Database['public']['Tables']['users']['Row']
 interface MessagesState {
   messages: Record<string, Message[]> // Keyed by channel_id
   messagesLoading: Record<string, boolean> // Loading state for each channel
+  selectedMessageId: string | null // Track selected message for scrolling
   addMessage: (channelId: string | undefined, message: Message) => void
   setMessages: (channelId: string | undefined, messages: Message[]) => void
   setMessagesLoading: (channelId: string | undefined, loading: boolean) => void
+  selectMessage: (messageId: string | null) => void
+  getMessageById: (messageId: string) => { message: Message, channelId: string } | null
 }
 
 interface OnlineUsersState {
@@ -61,6 +64,7 @@ export const useStore = create<Store>((set, get) => ({
   // Messages slice
   messages: {},
   messagesLoading: {},
+  selectedMessageId: null,
   addMessage: (channelId, message) => {
     if (typeof channelId !== 'string') return
     set((state) => ({
@@ -87,6 +91,17 @@ export const useStore = create<Store>((set, get) => ({
         [channelId]: loading,
       },
     }))
+  },
+  selectMessage: (messageId) => set({ selectedMessageId: messageId }),
+  getMessageById: (messageId) => {
+    const state = get()
+    for (const [channelId, messages] of Object.entries(state.messages)) {
+      const message = messages.find(m => m.id === messageId)
+      if (message) {
+        return { message, channelId }
+      }
+    }
+    return null
   },
 
   // Online users slice

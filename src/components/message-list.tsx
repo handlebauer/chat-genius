@@ -4,7 +4,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Database } from '@/lib/supabase/types'
 import { MessageAttachments } from './message-attachments'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useStore } from '@/lib/store'
+import { cn } from '@/lib/utils'
 
 interface Message {
   id: string
@@ -21,21 +23,84 @@ interface MessageListProps {
 
 export function MessageList({ messages }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const { selectedMessageId, selectMessage } = useStore()
+  const [isHighlighted, setIsHighlighted] = useState(false)
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView()
+    if (shouldScrollToBottom) {
+      messagesEndRef.current?.scrollIntoView()
+    }
   }
 
+  // Handle new messages
   useEffect(() => {
-    scrollToBottom()
+    // Only scroll to bottom for new messages if we're not in a search-result view
+    if (!selectedMessageId && shouldScrollToBottom) {
+      scrollToBottom()
+    }
   }, [messages])
 
+  // Handle scrolling to selected message
+  useEffect(() => {
+    if (selectedMessageId) {
+      // Disable auto-scroll to bottom when we're viewing a search result
+      setShouldScrollToBottom(false)
+
+      if (messageRefs.current[selectedMessageId]) {
+        // Set highlight state
+        setIsHighlighted(true)
+
+        // Scroll to the message
+        messageRefs.current[selectedMessageId]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        })
+
+        // Start fading out after a delay
+        const fadeStartTimer = setTimeout(() => {
+          setIsHighlighted(false)
+        }, 1500)
+
+        // Clear the selection after the fade completes
+        const selectionTimer = setTimeout(() => {
+          selectMessage(null)
+          // Don't re-enable auto-scroll here, keep the scroll position
+        }, 2500) // 1.5s delay + 1s fade duration
+
+        return () => {
+          clearTimeout(fadeStartTimer)
+          clearTimeout(selectionTimer)
+        }
+      }
+    }
+  }, [selectedMessageId, selectMessage])
+
+  // Re-enable auto-scroll only when user manually scrolls to bottom
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLDivElement
+    const isAtBottom = target.scrollHeight - target.scrollTop === target.clientHeight
+    if (isAtBottom) {
+      setShouldScrollToBottom(true)
+    }
+  }
+
   return (
-    <ScrollArea className="flex-1">
+    <ScrollArea className="flex-1" onScroll={handleScroll}>
       <div className="p-4 pb-0 space-y-4">
         {messages.map(message => (
-          <div key={message.id} className="relative group">
-            <div className="flex gap-2 items-start">
+          <div
+            key={message.id}
+            ref={(el) => {
+              if (el) messageRefs.current[message.id] = el
+            }}
+            className={cn(
+              "relative group transition-colors duration-1000",
+              selectedMessageId === message.id && isHighlighted && "bg-yellow-100 rounded-lg"
+            )}
+          >
+            <div className="flex gap-2 items-start p-2">
               <Avatar className="w-7 h-7 mt-[2px]">
                 <AvatarImage
                   src={message.sender.avatar_url || undefined}
