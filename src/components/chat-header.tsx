@@ -31,14 +31,15 @@ export function ChatHeader({ channel, user }: ChatHeaderProps) {
   if (!channel?.name) {
     return (
       <div className="flex justify-between items-center px-4 h-14 border-b">
-        <div className="flex-1 max-w-xl mx-4">
+        <div className="flex-1" />
+        <div className="flex items-center gap-4">
           <MessageSearch />
+          <UserMenu
+            email={user.email}
+            userData={user.data}
+            userInitials={userInitials}
+          />
         </div>
-        <UserMenu
-          email={user.email}
-          userData={user.data}
-          userInitials={userInitials}
-        />
       </div>
     )
   }
@@ -69,15 +70,14 @@ export function ChatHeader({ channel, user }: ChatHeaderProps) {
         )}
       </div>
 
-      <div className="flex-1 max-w-xl mx-4">
+      <div className="flex items-center gap-4">
         <MessageSearch />
+        <UserMenu
+          email={user.email}
+          userData={user.data}
+          userInitials={userInitials}
+        />
       </div>
-
-      <UserMenu
-        email={user.email}
-        userData={user.data}
-        userInitials={userInitials}
-      />
     </div>
   )
 }
