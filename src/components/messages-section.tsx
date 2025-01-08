@@ -4,6 +4,7 @@ import { MessageList } from './message-list'
 import { MessagesErrorBoundary } from './messages-error-boundary'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useEffect, useRef } from 'react'
 
 // TODO: Set this to true to enable skeleton loading UI for messages
 const ENABLE_SKELETON_LOADING = false
@@ -14,6 +15,15 @@ interface MessagesSectionProps {
 }
 
 export function MessagesSection({ messages, loading }: MessagesSectionProps) {
+  const loadingEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Scroll to bottom when loading state changes
+    if (!loading) {
+      loadingEndRef.current?.scrollIntoView()
+    }
+  }, [loading])
+
   if (loading && ENABLE_SKELETON_LOADING) {
     return (
       <div className="flex-1 p-4 space-y-4">
@@ -26,6 +36,7 @@ export function MessagesSection({ messages, loading }: MessagesSectionProps) {
             </div>
           </div>
         ))}
+        <div ref={loadingEndRef} />
       </div>
     )
   }

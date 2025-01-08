@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Database } from '@/lib/supabase/types'
 import { MessageAttachments } from './message-attachments'
+import { useEffect, useRef } from 'react'
 
 interface Message {
   id: string
@@ -19,9 +20,19 @@ interface MessageListProps {
 }
 
 export function MessageList({ messages }: MessageListProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView()
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
   return (
     <ScrollArea className="flex-1">
-      <div className="p-4 space-y-4">
+      <div className="p-4 pb-0 space-y-4">
         {messages.map(message => (
           <div key={message.id} className="relative group">
             <div className="flex gap-2 items-start">
@@ -49,6 +60,7 @@ export function MessageList({ messages }: MessageListProps) {
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
     </ScrollArea>
   )
