@@ -38,6 +38,10 @@ export async function GET(request: Request) {
       name = metadata.name || metadata.preferred_username || metadata.user_name || metadata.email
       // GitHub avatar is in avatar_url
       avatarUrl = metadata.avatar_url
+    } else if (provider === 'google') {
+      // Google provides name and picture in metadata
+      name = metadata.name || metadata.full_name || metadata.email
+      avatarUrl = metadata.picture // Google uses 'picture' for avatar URL
     }
 
     // Ensure we have at least some name value
