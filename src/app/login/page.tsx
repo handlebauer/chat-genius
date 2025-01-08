@@ -13,32 +13,37 @@ const features = [
     description: 'Discord and GitHub OAuth integration using Supabase Auth with automatic user session management and protected routes.'
   },
   {
-    title: 'Real-time messaging',
+    title: 'Real-time Messaging',
     status: 'checked',
     description: 'Real-time message delivery using Supabase\'s Realtime feature with optimistic updates and automatic channel subscriptions.'
   },
   {
-    title: 'Channel/DM Organization',
+    title: 'Channels and DMs',
     status: 'checked',
     description: 'Organized communication through public channels and private direct messages with a collapsible sidebar interface.'
   },
   {
-    title: 'File sharing & search',
+    title: 'File Sharing',
     status: 'checked',
-    description: 'Full file upload support with preview capabilities and a message search system using Supabase\'s full-text search.'
+    description: 'Full file upload support with preview capabilities for images, documents and other file types.'
   },
   {
-    title: 'User presence, & status',
+    title: 'Message Search',
+    status: 'checked',
+    description: 'Powerful message search system using Supabase\'s full-text search with highlighted results.'
+  },
+  {
+    title: 'User Status',
     status: 'wip',
     description: 'Basic online/offline status implemented through Supabase\'s Realtime features, with typing indicators and away status planned.'
   },
   {
-    title: 'Thread support',
+    title: 'Message Threads',
     status: 'unchecked',
     description: 'Will allow users to create threaded conversations from any message with their own real-time updates and notifications.'
   },
   {
-    title: 'Emoji reactions',
+    title: 'Reactions',
     status: 'unchecked',
     description: 'Will enable users to react to messages with emojis, including frequently used suggestions and custom emoji support.'
   }
