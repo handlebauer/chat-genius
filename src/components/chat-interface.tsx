@@ -15,6 +15,7 @@ import { MessagesSection } from './messages-section'
 import { ChatHeader } from './chat-header'
 
 import type { Database } from '@/lib/supabase/types'
+import { useEffect } from 'react'
 
 type UserData = Database['public']['Tables']['users']['Row']
 
@@ -24,11 +25,18 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
   const { channelId } = useParams() as { channelId: string }
-  const { getCurrentChannel } = useStore()
+  const { getCurrentChannel, setActiveChannelId, channelsLoading } = useStore()
   const currentChannel = getCurrentChannel()
   const userData = useUserData(user.id) as UserData | null
 
-  const { messages, loading } = useRealTimeMessages(channelId)
+  // Ensure activeChannelId stays in sync with route
+  useEffect(() => {
+    if (!channelsLoading) {
+      setActiveChannelId(channelId)
+    }
+  }, [channelId, setActiveChannelId, channelsLoading])
+
+  const { messages, loading: messagesLoading } = useRealTimeMessages(channelId)
   const sendMessage = useMessageSender(userData?.id, channelId)
 
   // Ensure we have a valid email string
@@ -54,7 +62,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
 
       <div className="flex flex-col flex-1">
         <ChatHeader
-          channel={currentChannel}
+          channel={channelsLoading ? undefined : currentChannel}
           user={{
             id: user.id,
             email: userEmail,
@@ -62,9 +70,9 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           }}
         />
 
-        {currentChannel && userData?.id && (
+        {!channelsLoading && currentChannel && userData?.id && (
           <>
-            <MessagesSection messages={messages} loading={loading} />
+            <MessagesSection messages={messages} loading={messagesLoading} />
             <MessageEditor
               channelName={currentChannel.name}
               userId={userData.id}
