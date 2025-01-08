@@ -2,6 +2,15 @@
 
 A real-time messaging platform designed for team collaboration, featuring secure authentication, organized communication via channels and DMs, and essential tools like file sharing, threaded conversations, and emoji reactions.
 
+## Tech Stack
+
+- **Frontend Framework**: Next.js 14 with TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: Supabase
+- **Authentication**: Supabase Auth (Discord + GitHub)
+- **UI Components**: Radix UI, shadcn/ui
+- **Deployment**: Vercel
+
 ## Getting Started
 
 First, run the development server:
