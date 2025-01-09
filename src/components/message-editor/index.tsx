@@ -7,23 +7,35 @@ import { ActionButtons } from './action-buttons'
 import { FilePreview } from './file-preview'
 import './message-editor.css'
 import type { UploadedFile } from '@/hooks/use-file-upload'
+import type { Database } from '@/lib/supabase/types'
+
+type Channel = Database['public']['Tables']['channels']['Row']
 
 interface MessageEditorProps {
   onSend: (content: string, attachments?: UploadedFile[]) => void
-  channelName?: string
+  channel?: Channel
   userId: string
+  dmParticipant?: { name: string; email: string } | null
 }
 
-export function MessageEditor({ onSend, channelName = '', userId }: MessageEditorProps) {
+export function MessageEditor({ onSend, channel, userId, dmParticipant }: MessageEditorProps) {
   const editorRef = useRef(null)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+
+  const getPlaceholder = () => {
+    if (!channel?.name) return ''
+    if (channel.channel_type === 'direct_message') {
+      return `Message ${dmParticipant?.name || dmParticipant?.email || 'user'}`
+    }
+    return `Message #${channel.name.toLowerCase()}`
+  }
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({
-        placeholder: `Message #${channelName}`,
+        placeholder: getPlaceholder(),
         emptyEditorClass: 'is-editor-empty',
       }),
     ],
@@ -35,7 +47,7 @@ export function MessageEditor({ onSend, channelName = '', userId }: MessageEdito
       },
     },
     immediatelyRender: false,
-  }, [channelName])
+  }, [channel?.name, dmParticipant])
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -81,7 +93,7 @@ export function MessageEditor({ onSend, channelName = '', userId }: MessageEdito
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
   }, [])
 
-  if (!channelName) return null
+  if (!channel?.name) return null
 
   return (
     <div className="p-4 pt-0">

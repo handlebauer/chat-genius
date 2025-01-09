@@ -25,9 +25,15 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
   const { channelId } = useParams() as { channelId: string }
-  const { getCurrentChannel, setActiveChannelId, channelsLoading } = useStore()
+  const { getCurrentChannel, setActiveChannelId, channelsLoading, getDMParticipant } = useStore()
   const currentChannel = getCurrentChannel()
   const userData = useUserData(user.id) as UserData | null
+  const isDM = currentChannel?.channel_type === 'direct_message'
+  const rawDmParticipant = isDM ? getDMParticipant(currentChannel?.id ?? null, user.id) : null
+  const dmParticipant = rawDmParticipant ? {
+    name: rawDmParticipant.name || rawDmParticipant.email,
+    email: rawDmParticipant.email
+  } : null
 
   // Ensure activeChannelId stays in sync with route
   useEffect(() => {
@@ -74,9 +80,10 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           <>
             <MessagesSection messages={messages} loading={messagesLoading} />
             <MessageEditor
-              channelName={currentChannel.name}
+              channel={currentChannel}
               userId={userData.id}
               onSend={sendMessage}
+              dmParticipant={isDM ? dmParticipant : null}
             />
           </>
         )}
