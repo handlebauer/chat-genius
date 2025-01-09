@@ -45,6 +45,7 @@ export function ChatHeader({ channel, user }: ChatHeaderProps) {
   }
 
   const avatarUrl = dmParticipant?.avatar_url || undefined
+  const displayName = isDM ? dmParticipant?.name || 'Unknown User' : channel.name
 
   return (
     <div className="flex justify-between items-center px-4 h-14 border-b">
@@ -54,18 +55,18 @@ export function ChatHeader({ channel, user }: ChatHeaderProps) {
             <Avatar className="w-5 h-5 mr-2">
               <AvatarImage
                 src={avatarUrl}
-                alt={channel.name}
+                alt={displayName}
               />
               <AvatarFallback className="text-xs">
-                {channel.name.substring(0, 2).toUpperCase()}
+                {displayName.substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <h2 className="font-medium text-zinc-900">{channel.name}</h2>
+            <h2 className="font-medium text-zinc-900">{displayName}</h2>
           </>
         ) : (
           <>
             <Hash className="mr-[2px] w-[18px] h-[18px] text-zinc-900" />
-            <h2 className="font-medium text-zinc-900">{channel.name.toLowerCase()}</h2>
+            <h2 className="font-medium text-zinc-900">{displayName.toLowerCase()}</h2>
           </>
         )}
       </div>
