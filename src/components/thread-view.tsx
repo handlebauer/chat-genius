@@ -33,6 +33,86 @@ interface ThreadViewProps {
   isNewlyCreated?: boolean
 }
 
+interface ThreadHeaderProps {
+  replyCount?: number
+  lastReplyAt?: string
+  isNewThread?: boolean
+  onClick?: () => void
+}
+
+function ThreadHeader({ replyCount = 0, lastReplyAt, isNewThread, onClick }: ThreadHeaderProps) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn(
+        "h-6 px-2 text-xs flex items-center gap-2 w-full justify-start mt-0.5",
+        isNewThread ? "cursor-default hover:bg-transparent text-zinc-500" : "text-zinc-500 hover:text-zinc-900 group/thread"
+      )}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+    >
+      <div className="w-3.5 flex-none text-zinc-500">
+        <MessageSquare className="h-3.5 w-3.5" />
+      </div>
+      <div className="flex items-center gap-2 flex-1">
+        {isNewThread ? (
+          <span className="select-none">New thread</span>
+        ) : (
+          <>
+            <span className="group-hover/thread:underline">{replyCount} repl{replyCount === 1 ? 'y' : 'ies'}</span>
+            <span>•</span>
+            <span>{formatDistanceToNow(new Date(lastReplyAt!))} ago</span>
+          </>
+        )}
+      </div>
+    </Button>
+  )
+}
+
+interface ReplyInputProps {
+  currentUser: Database['public']['Tables']['users']['Row']
+  replyText: string
+  onReplyChange: (text: string) => void
+  onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
+  isSubmitting: boolean
+  placeholder: string
+  inputRef?: React.RefObject<HTMLInputElement | null>
+}
+
+function ReplyInput({ currentUser, replyText, onReplyChange, onKeyDown, isSubmitting, placeholder, inputRef }: ReplyInputProps) {
+  return (
+    <div className="flex gap-2 items-center">
+      <Avatar className="w-6 h-6 flex-none">
+        <AvatarImage
+          src={currentUser.avatar_url || undefined}
+          alt={currentUser.name || currentUser.email}
+        />
+        <AvatarFallback className="text-xs">
+          {currentUser.name
+            ? currentUser.name.substring(0, 2).toUpperCase()
+            : currentUser.email.substring(0, 2).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <Input
+        ref={inputRef}
+        value={replyText}
+        onChange={(e) => onReplyChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        className={cn(
+          "h-8 text-sm bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400",
+          isSubmitting && "opacity-50 cursor-not-allowed"
+        )}
+        disabled={isSubmitting}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  )
+}
+
 export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyCreated }: ThreadViewProps) {
   const [replyText, setReplyText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,7 +127,6 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
     enabled: isNewlyCreated && thread.reply_count === 0 && isExpanded
   })
 
-  // Focus input when thread is newly created or expanded
   useEffect(() => {
     if ((isNewlyCreated || isExpanded) && inputRef.current) {
       inputRef.current.focus()
@@ -69,62 +148,25 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
     }
   }
 
-  const handleContainerClick = (e: React.MouseEvent) => {
-    // Prevent click from reaching parent elements
-    e.stopPropagation()
-  }
-
   // If it's a newly created thread and has no replies, show the special new thread view
   if (isNewlyCreated && thread.reply_count === 0) {
     return (
       <div
         ref={containerRef}
         className="ml-9 space-y-2"
-        onClick={handleContainerClick}
+        onClick={(e) => e.stopPropagation()}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs cursor-default flex items-center gap-2 w-full justify-start mt-0.5 hover:bg-transparent isolate"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-3.5 flex-none text-zinc-500">
-            <MessageSquare className="h-3.5 w-3.5" />
-          </div>
-          <div className="flex items-center gap-2 flex-1">
-            <span className="select-none text-zinc-500">New thread</span>
-          </div>
-        </Button>
-        <div
-          className="space-y-4 border-l-2 border-l-zinc-200 pl-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex gap-2 items-start pt-2">
-            <Avatar className="w-6 h-6">
-              <AvatarImage
-                src={currentUser.avatar_url || undefined}
-                alt={currentUser.name || currentUser.email}
-              />
-              <AvatarFallback className="text-xs">
-                {currentUser.name
-                  ? currentUser.name.substring(0, 2).toUpperCase()
-                  : currentUser.email.substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <Input
-              ref={inputRef}
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Start a thread..."
-              className={cn(
-                "h-8 text-sm bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400",
-                isSubmitting && "opacity-50 cursor-not-allowed"
-              )}
-              disabled={isSubmitting}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
+        <ThreadHeader isNewThread replyCount={0} />
+        <div className="space-y-4 border-l-2 border-l-zinc-200 pl-4">
+          <ReplyInput
+            currentUser={currentUser}
+            replyText={replyText}
+            onReplyChange={setReplyText}
+            onKeyDown={handleKeyDown}
+            isSubmitting={isSubmitting}
+            placeholder="Start a thread..."
+            inputRef={inputRef}
+          />
         </div>
       </div>
     )
@@ -138,42 +180,22 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
   if (!isExpanded) {
     return (
       <div className="ml-9">
-        <Button
-          variant="ghost"
-          size="sm"
+        <ThreadHeader
+          replyCount={thread.reply_count}
+          lastReplyAt={thread.last_reply_at}
           onClick={onToggle}
-          className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-2 w-full justify-start group/thread mt-0"
-        >
-          <div className="w-3.5 flex-none">
-            <MessageSquare className="h-3.5 w-3.5" />
-          </div>
-          <div className="flex items-center gap-2 flex-1">
-            <span className="group-hover/thread:underline">{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
-            <span>•</span>
-            <span>{formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
-          </div>
-        </Button>
+        />
       </div>
     )
   }
 
   return (
     <div className="ml-9">
-      <Button
-        variant="ghost"
-        size="sm"
+      <ThreadHeader
+        replyCount={thread.reply_count}
+        lastReplyAt={thread.last_reply_at}
         onClick={onToggle}
-        className="h-6 px-2 text-xs text-zinc-900 flex items-center gap-2 w-full justify-start group/thread mt-0"
-      >
-        <div className="w-3.5 flex-none">
-          <MessageSquare className="h-3.5 w-3.5" />
-        </div>
-        <div className="flex items-center gap-2 flex-1">
-          <span className="group-hover/thread:underline">{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
-          <span>•</span>
-          <span>{formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
-        </div>
-      </Button>
+      />
       <div className="mt-2 space-y-2 border-l-2 border-l-zinc-200 pl-4">
         {thread.replies.map(reply => (
           <div key={reply.id} className="flex gap-2 items-start">
@@ -201,29 +223,15 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
             </div>
           </div>
         ))}
-        <div className="flex gap-2 items-center pt-1">
-          <Avatar className="w-6 h-6 flex-none">
-            <AvatarImage
-              src={currentUser.avatar_url || undefined}
-              alt={currentUser.name || currentUser.email}
-            />
-            <AvatarFallback className="text-xs">
-              {currentUser.name
-                ? currentUser.name.substring(0, 2).toUpperCase()
-                : currentUser.email.substring(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <Input
-            ref={inputRef}
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
+        <div className="pt-1">
+          <ReplyInput
+            currentUser={currentUser}
+            replyText={replyText}
+            onReplyChange={setReplyText}
             onKeyDown={handleKeyDown}
+            isSubmitting={isSubmitting}
             placeholder="Reply to thread..."
-            className={cn(
-              "h-8 text-sm bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400",
-              isSubmitting && "opacity-50 cursor-not-allowed"
-            )}
-            disabled={isSubmitting}
+            inputRef={inputRef}
           />
         </div>
       </div>
