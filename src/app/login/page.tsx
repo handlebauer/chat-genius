@@ -34,12 +34,12 @@ const features = [
   },
   {
     title: 'User Status',
-    status: 'wip',
-    description: 'Basic online/offline status implemented through Supabase\'s Realtime features, with typing indicators and away status planned.'
+    status: 'checked',
+    description: 'Real-time user presence with online/away status detection, idle state tracking, and status indicators in DM and channel lists.'
   },
   {
     title: 'Message Threads',
-    status: 'unchecked',
+    status: 'wip',
     description: 'Will allow users to create threaded conversations from any message with their own real-time updates and notifications.'
   },
   {
