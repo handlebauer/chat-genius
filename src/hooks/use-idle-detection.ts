@@ -25,7 +25,7 @@ export function useIdleDetection() {
   }, [lastActivity, isIdle])
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout
+    let timeoutId: NodeJS.Timeout | undefined
 
     // Set up event listeners for user activity
     window.addEventListener('mousemove', handleActivity)
