@@ -1,84 +1,51 @@
 'use client'
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback } from 'react'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useUserData } from '@/hooks/use-user-data'
+import { useIdleDetection } from '@/hooks/use-idle-detection'
 import { Database } from '@/lib/supabase/types'
 import { useStore } from '@/lib/store'
+import type { OnlineUser } from '@/lib/store'
 
 interface OnlineUsersProps {
   userId: string
 }
 
-const AWAY_TIMEOUT = 30000 // 30 seconds in milliseconds
+// Type for the presence data tracked per user
+interface PresenceState {
+  user_id: string
+  email: string | null
+  name: string | null
+  last_seen: string
+  status: 'online' | 'away'
+}
+
+// Type for the presence state returned by Supabase
+type RealtimePresenceState = Record<string, PresenceState[]>
 
 export function useOnlineUsers({ userId }: OnlineUsersProps) {
   const supabase = createClientComponentClient<Database>()
   const { onlineUsers, setOnlineUsers } = useStore()
   const user = useUserData(userId)
-  const lastActivityRef = useRef(new Date().toISOString())
-  const channelRef = useRef<RealtimeChannel | null>(null)
+  const { isIdle } = useIdleDetection()
 
-  // Track user activity
-  const updateActivity = useCallback(() => {
-    lastActivityRef.current = new Date().toISOString()
-
-    // Update presence with new activity timestamp
-    if (channelRef.current) {
-      channelRef.current.track({
-        user_id: user?.id,
-        email: user?.email,
-        name: user?.name,
-        last_seen: new Date().toISOString(),
-        last_active: lastActivityRef.current,
-        status: 'online'
-      })
-    }
-  }, [user])
-
-  // Set up activity listeners
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const events = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart']
-    const handleActivity = () => {
-      updateActivity()
-    }
-
-    events.forEach(event => {
-      window.addEventListener(event, handleActivity)
-    })
-
-    // Check for away status periodically
-    const checkAwayStatus = setInterval(() => {
-      const now = new Date().getTime()
-      const lastActive = new Date(lastActivityRef.current).getTime()
-
-      if (now - lastActive >= AWAY_TIMEOUT && channelRef.current) {
-        channelRef.current.track({
-          user_id: user?.id,
-          email: user?.email,
-          name: user?.name,
-          last_seen: new Date().toISOString(),
-          last_active: lastActivityRef.current,
-          status: 'away'
-        })
-      }
-    }, 5000) // Check every 5 seconds
-
-    return () => {
-      events.forEach(event => {
-        window.removeEventListener(event, handleActivity)
-      })
-      clearInterval(checkAwayStatus)
-    }
-  }, [updateActivity, user])
+  // Memoize the presence sync handler with proper types
+  const handlePresenceSync = useCallback((state: RealtimePresenceState) => {
+    const currentOnlineUsers = Object.values(state).flat().map((presence: PresenceState): OnlineUser => ({
+      id: presence.user_id,
+      email: presence.email || '',
+      name: presence.name || presence.email || presence.user_id,
+      last_seen: new Date().toISOString(),
+      status: presence.status
+    }))
+    setOnlineUsers(currentOnlineUsers)
+  }, [setOnlineUsers])
 
   useEffect(() => {
     if (!user) return
 
-    // Create and subscribe to the presence channel
     const channel = supabase.channel('online-users', {
       config: {
         presence: {
@@ -87,35 +54,28 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
       },
     })
 
-    channelRef.current = channel
-
-    // Handle presence state changes
     channel.on('presence', { event: 'sync' }, () => {
-      const state = channel.presenceState()
-      const currentOnlineUsers = Object.values(state).flat().map((presence: any) => ({
-        id: presence.user_id,
-        email: presence.email,
-        name: presence.name,
-        last_seen: presence.last_seen,
-        last_active: presence.last_active || presence.last_seen,
-        status: presence.status || 'online'
-      }))
-      setOnlineUsers(currentOnlineUsers)
+      handlePresenceSync(channel.presenceState())
     })
 
-    // Subscribe to the channel and start tracking presence
     channel
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await updateActivity()
+          const presenceData: PresenceState = {
+            user_id: user.id,
+            email: user.email,
+            name: user.name || null,
+            last_seen: new Date().toISOString(),
+            status: isIdle ? 'away' : 'online'
+          }
+          await channel.track(presenceData)
         }
       })
 
     return () => {
       channel.unsubscribe()
-      channelRef.current = null
     }
-  }, [user, supabase, setOnlineUsers, updateActivity])
+  }, [user, supabase, handlePresenceSync, isIdle])
 
   return { onlineUsers }
 }

@@ -10,72 +10,21 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { useOnlineUsers } from '@/hooks/use-online-users'
 import { useUserData } from '@/hooks/use-user-data'
+import { useIdleDetection } from '@/hooks/use-idle-detection'
 import { useRouter } from 'next/navigation'
 import { getOrCreateDMChannel } from '@/lib/actions'
-import { cn } from '@/lib/utils'
-import type { UserStatus } from '@/lib/store'
+import { useMemo } from 'react'
 
-type OnlineUser = {
-  id: string
-  name: string
-  email: string | undefined
-  status: UserStatus
-}
-
-type UserListItemProps = {
-  user: OnlineUser
-  isCurrentUser?: boolean
-  onClick?: (userId: string) => void
-}
-
-const StatusIndicator = ({ status }: { status: UserStatus }) => (
-  <Circle
-    className={cn(
-      "scale-[0.5]",
-      {
-        "text-green-500 fill-current": status === 'online',
-        "text-yellow-500 fill-current": status === 'away',
-        "text-zinc-300": status === 'offline'
-      }
-    )}
-  />
-)
-
-const UserListItem = ({ user, isCurrentUser, onClick }: UserListItemProps) => (
-  <Button
-    key={user.id}
-    variant="ghost"
-    className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto group"
-    onClick={() => !isCurrentUser && onClick?.(user.id)}
-  >
-    <StatusIndicator status={user.status} />
-    <span className="flex-1 text-left">
-      {user.name || user.email}
-    </span>
-    {isCurrentUser ? (
-      <span className="text-zinc-400 text-[13px] inline-flex items-center font-extralight">
-        you
-      </span>
-    ) : user.status === 'away' && (
-      <span className="text-zinc-400 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">
-        away
-      </span>
-    )}
-  </Button>
-)
-
-interface DirectMessagesListProps {
-  userId: string
-}
-
-export function DirectMessagesList({ userId }: DirectMessagesListProps) {
+export function DirectMessagesList({ userId }: { userId: string }) {
   const { onlineUsers } = useOnlineUsers({ userId })
   const currentUser = useUserData(userId)
   const router = useRouter()
+  const { isIdle } = useIdleDetection()
 
-  // Memoize filtered users to prevent unnecessary re-renders
-  const otherOnlineUsers = onlineUsers.filter(user => user.id !== currentUser?.id)
-  const currentUserOnlineData = onlineUsers.find(user => user.id === currentUser?.id)
+  // Memoize filtered users to prevent unnecessary recalculations
+  const otherOnlineUsers = useMemo(() => {
+    return onlineUsers.filter(user => user.id !== currentUser?.id)
+  }, [onlineUsers, currentUser?.id])
 
   const handleUserClick = async (otherUserId: string) => {
     try {
@@ -83,6 +32,17 @@ export function DirectMessagesList({ userId }: DirectMessagesListProps) {
       router.push(`/chat/${channel.id}`)
     } catch (error) {
       console.error('Failed to create or get DM channel:', error)
+    }
+  }
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'away':
+        return 'text-yellow-500'
+      case 'online':
+        return 'text-green-500'
+      default:
+        return 'text-gray-500'
     }
   }
 
@@ -96,18 +56,26 @@ export function DirectMessagesList({ userId }: DirectMessagesListProps) {
       </div>
       <CollapsibleContent>
         <div className="px-2">
-          {currentUser && currentUserOnlineData && (
-            <UserListItem
-              user={currentUserOnlineData}
-              isCurrentUser={true}
-            />
+          {currentUser && (
+            <Button
+              key={currentUser.id}
+              variant="ghost"
+              className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto"
+            >
+              <Circle className={`scale-[0.5] ${getStatusColor(isIdle ? 'away' : 'online')} fill-current`} />
+              {currentUser.name || currentUser.email} <span className="text-zinc-400 ml-1 text-[13px] inline-flex items-center font-extralight">you</span>
+            </Button>
           )}
           {otherOnlineUsers.map(user => (
-            <UserListItem
+            <Button
               key={user.id}
-              user={user}
-              onClick={handleUserClick}
-            />
+              variant="ghost"
+              className="flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto"
+              onClick={() => handleUserClick(user.id)}
+            >
+              <Circle className={`scale-[0.5] ${getStatusColor(user.status)} fill-current`} />
+              {user.name || user.email}
+            </Button>
           ))}
         </div>
       </CollapsibleContent>
