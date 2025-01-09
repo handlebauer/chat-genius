@@ -107,31 +107,28 @@ export function MessageList({ messages }: MessageListProps) {
     try {
       const thread = await createThread(messageId, channelId)
       if (thread) {
-        // Wait a short moment for the database to update
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // Find the message and check if it has the thread now
-        const message = messages.find(m => m.id === messageId)
-        if (message?.thread) {
-          setExpandedThreadIds(prev => new Set(prev).add(thread.id))
-          setNewlyCreatedThreadIds(prev => new Set(prev).add(thread.id))
-        } else {
-          // If the message doesn't have the thread yet, we need to wait for the next message update
-          const cleanup = useStore.subscribe((state, prevState) => {
-            const prevMessage = prevState.messages[channelId]?.find(m => m.id === messageId)
-            const newMessage = state.messages[channelId]?.find(m => m.id === messageId)
-            const hasNewThread = newMessage && 'thread' in newMessage && newMessage.thread && 'id' in newMessage.thread
-
-            if (hasNewThread && (!prevMessage?.thread || prevMessage.thread.id !== (newMessage as Message & { thread: Thread }).thread.id)) {
-              setExpandedThreadIds(prev => new Set(prev).add((newMessage as Message & { thread: Thread }).thread.id))
-              setNewlyCreatedThreadIds(prev => new Set(prev).add((newMessage as Message & { thread: Thread }).thread.id))
-              cleanup()
+        // Optimistically create a thread object and update the message
+        const currentMessages = messages.map(m => {
+          if (m.id === messageId) {
+            return {
+              ...m,
+              thread: {
+                id: thread.id,
+                reply_count: 0,
+                last_reply_at: new Date().toISOString(),
+                replies: []
+              }
             }
-          })
+          }
+          return m
+        })
 
-          // Clean up the subscription after 5 seconds if it hasn't fired
-          setTimeout(cleanup, 5000)
-        }
+        // Update the messages in the store
+        useStore.getState().setMessages(channelId, currentMessages)
+
+        // Set the thread as expanded and newly created
+        setExpandedThreadIds(prev => new Set(prev).add(thread.id))
+        setNewlyCreatedThreadIds(prev => new Set(prev).add(thread.id))
       }
     } catch (error) {
       console.error('Failed to create thread:', error)
