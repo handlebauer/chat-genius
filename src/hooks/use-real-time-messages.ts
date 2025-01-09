@@ -14,6 +14,30 @@ type MessageRow = {
   updated_at: string
 }
 
+interface ThreadReply {
+  id: string
+  content: string
+  sender: Database['public']['Tables']['users']['Row']
+  created_at: string
+}
+
+interface Thread {
+  id: string
+  reply_count: number
+  last_reply_at: string
+  replies: ThreadReply[]
+}
+
+interface Message {
+  id: string
+  content: string
+  sender: Database['public']['Tables']['users']['Row']
+  created_at: string
+  channel_id: string
+  attachments?: Database['public']['Tables']['attachments']['Row'][]
+  thread?: Thread
+}
+
 function isMessageRow(obj: any): obj is MessageRow {
   return (
     obj &&
@@ -34,6 +58,55 @@ export function useRealTimeMessages(channelId: string | undefined) {
     async function loadMessages() {
       setMessagesLoading(channelId, true)
 
+      // First, get all threads in this channel to map parent messages
+      const { data: threadsData } = await supabase
+        .from('threads')
+        .select(`
+          id,
+          parent_message_id,
+          created_at,
+          replies:messages!thread_id(
+            id,
+            content,
+            created_at,
+            sender:users!messages_sender_id_fkey(
+              id,
+              name,
+              email,
+              avatar_url,
+              status,
+              created_at,
+              updated_at
+            )
+          )
+        `)
+        .eq('channel_id', channelId)
+
+      // Create a map of parent message IDs to their thread data
+      const threadMap = new Map(
+        threadsData?.map(thread => {
+          const replies = (thread.replies || []).map(reply => ({
+            id: reply.id,
+            content: reply.content,
+            created_at: reply.created_at,
+            sender: reply.sender as unknown as Database['public']['Tables']['users']['Row']
+          }))
+
+          return [
+            thread.parent_message_id,
+            {
+              id: thread.id,
+              reply_count: replies.length,
+              last_reply_at: replies.length
+                ? replies[replies.length - 1].created_at
+                : thread.created_at,
+              replies
+            }
+          ]
+        }) || []
+      )
+
+      // Then get all messages with their basic data
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select(`
@@ -41,7 +114,7 @@ export function useRealTimeMessages(channelId: string | undefined) {
           content,
           created_at,
           channel_id,
-          sender:sender_id(
+          sender:users!messages_sender_id_fkey(
             id,
             name,
             email,
@@ -62,6 +135,7 @@ export function useRealTimeMessages(channelId: string | undefined) {
           )
         `)
         .eq('channel_id', channelId)
+        .is('thread_id', null) // Only get main messages, not thread replies
         .order('created_at')
 
       if (messagesError) {
@@ -71,7 +145,14 @@ export function useRealTimeMessages(channelId: string | undefined) {
       }
 
       if (messagesData) {
-        setMessages(channelId, messagesData as any)
+        // Combine messages with their thread data
+        const messagesWithThreads = messagesData.map(message => ({
+          ...message,
+          sender: message.sender as unknown as Database['public']['Tables']['users']['Row'],
+          thread: threadMap.get(message.id)
+        })) as unknown as Message[]
+
+        setMessages(channelId, messagesWithThreads)
       }
 
       setMessagesLoading(channelId, false)
@@ -101,39 +182,101 @@ export function useRealTimeMessages(channelId: string | undefined) {
         async (payload: RealtimePostgresChangesPayload<MessageRow>) => {
           if (!payload.new || !isMessageRow(payload.new)) return
 
-          // Fetch the complete message with sender info
-          const { data: messageData } = await supabase
-            .from('messages')
-            .select(`
-              id,
-              content,
-              created_at,
-              channel_id,
-              sender:sender_id(
+          // For new messages, we need to check if it's a thread reply or a main message
+          if (payload.new.thread_id) {
+            // It's a thread reply, we need to update the parent message's thread data
+            const { data: threadData } = await supabase
+              .from('threads')
+              .select(`
                 id,
-                name,
-                email,
-                avatar_url,
-                status,
+                parent_message_id,
                 created_at,
-                updated_at
-              ),
-              attachments(
-                id,
-                file_name,
-                file_size,
-                file_type,
-                storage_path,
-                content_type,
-                created_at,
-                updated_at
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single()
+                replies:messages!thread_id(
+                  id,
+                  content,
+                  created_at,
+                  sender:users!messages_sender_id_fkey(
+                    id,
+                    name,
+                    email,
+                    avatar_url,
+                    status,
+                    created_at,
+                    updated_at
+                  )
+                )
+              `)
+              .eq('id', payload.new.thread_id)
+              .single()
 
-          if (messageData) {
-            addMessage(channelId, messageData as any)
+            if (threadData) {
+              // Update the parent message with new thread data
+              const currentMessages = messages[channelId] || []
+              const parentMessage = currentMessages.find(m => m.id === threadData.parent_message_id)
+
+              if (parentMessage) {
+                const replies = (threadData.replies || []).map(reply => ({
+                  id: reply.id,
+                  content: reply.content,
+                  created_at: reply.created_at,
+                  sender: reply.sender as unknown as Database['public']['Tables']['users']['Row']
+                }))
+
+                const updatedMessage = {
+                  ...parentMessage,
+                  thread: {
+                    id: threadData.id,
+                    reply_count: replies.length,
+                    last_reply_at: replies[replies.length - 1]?.created_at || threadData.created_at,
+                    replies
+                  }
+                } as unknown as Message
+
+                setMessages(
+                  channelId,
+                  currentMessages.map(m => m.id === updatedMessage.id ? updatedMessage : m)
+                )
+              }
+            }
+          } else {
+            // It's a new main message, fetch it with its data
+            const { data: messageData } = await supabase
+              .from('messages')
+              .select(`
+                id,
+                content,
+                created_at,
+                channel_id,
+                sender:users!messages_sender_id_fkey(
+                  id,
+                  name,
+                  email,
+                  avatar_url,
+                  status,
+                  created_at,
+                  updated_at
+                ),
+                attachments(
+                  id,
+                  file_name,
+                  file_size,
+                  file_type,
+                  storage_path,
+                  content_type,
+                  created_at,
+                  updated_at
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single()
+
+            if (messageData) {
+              const message = {
+                ...messageData,
+                sender: messageData.sender as unknown as Database['public']['Tables']['users']['Row']
+              }
+              addMessage(channelId, message as Message)
+            }
           }
         }
       )
@@ -143,7 +286,7 @@ export function useRealTimeMessages(channelId: string | undefined) {
     return () => {
       channel.unsubscribe()
     }
-  }, [supabase, channelId, addMessage])
+  }, [supabase, channelId, messages, setMessages, addMessage])
 
   return {
     messages: channelId ? messages[channelId] || [] : [],

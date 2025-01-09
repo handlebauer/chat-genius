@@ -3,6 +3,20 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/supabase/types'
 
 // Types
+interface ThreadReply {
+  id: string
+  content: string
+  sender: Database['public']['Tables']['users']['Row']
+  created_at: string
+}
+
+interface Thread {
+  id: string
+  reply_count: number
+  last_reply_at: string
+  replies: ThreadReply[]
+}
+
 interface Message {
   id: string
   content: string
@@ -10,6 +24,7 @@ interface Message {
   created_at: string
   channel_id: string
   attachments?: Database['public']['Tables']['attachments']['Row'][]
+  thread?: Thread
 }
 
 export interface OnlineUser {

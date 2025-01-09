@@ -266,3 +266,111 @@ export async function deleteChannel(channelId: string, userId: string) {
 
   revalidatePath('/chat')
 }
+
+export async function createThread(messageId: string, channelId: string) {
+  'use server'
+
+  console.log('[CreateThread] Starting with:', { messageId, channelId })
+  const supabase = createServerActionClient<Database>({ cookies })
+
+  // Check if thread already exists for this message
+  const { data: existingThread, error: existingError } = await supabase
+    .from('threads')
+    .select('id')
+    .eq('parent_message_id', messageId)
+    .single()
+
+  if (existingError && existingError.code !== 'PGRST116') { // PGRST116 is the "no rows returned" error
+    console.error('[CreateThread] Error checking existing thread:', existingError)
+    throw new Error(`Failed to check existing thread: ${existingError.message}`)
+  }
+
+  if (existingThread) {
+    console.log('[CreateThread] Thread already exists:', existingThread)
+    return existingThread
+  }
+
+  // Create new thread
+  const { data: newThread, error: createError } = await supabase
+    .from('threads')
+    .insert({
+      channel_id: channelId,
+      parent_message_id: messageId
+    })
+    .select()
+    .single()
+
+  if (createError) {
+    console.error('[CreateThread] Error creating thread:', createError)
+    throw new Error(`Failed to create thread: ${createError.message}`)
+  }
+
+  console.log('[CreateThread] Successfully created thread:', newThread)
+  revalidatePath('/chat')
+  return newThread
+}
+
+export async function createThreadReply(threadId: string, content: string) {
+  'use server'
+
+  console.log('[CreateThreadReply] Starting with:', { threadId, content })
+  const supabase = createServerActionClient<Database>({ cookies })
+
+  if (!content.trim()) {
+    throw new Error('Reply content cannot be empty')
+  }
+
+  // First, get the thread to ensure it exists and get its channel_id
+  const { data: thread, error: threadError } = await supabase
+    .from('threads')
+    .select('channel_id')
+    .eq('id', threadId)
+    .single()
+
+  if (threadError) {
+    console.error('[CreateThreadReply] Error fetching thread:', threadError)
+    throw new Error(`Thread not found: ${threadError.message}`)
+  }
+
+  // Get the current user's ID
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) {
+    console.error('[CreateThreadReply] Error getting user:', userError)
+    throw new Error('Not authenticated')
+  }
+
+  // Create the reply message
+  const { data: message, error: messageError } = await supabase
+    .from('messages')
+    .insert({
+      content: content.trim(),
+      channel_id: thread.channel_id,
+      sender_id: user.id,
+      thread_id: threadId
+    })
+    .select(`
+      id,
+      content,
+      created_at,
+      channel_id,
+      sender:users!messages_sender_id_fkey(
+        id,
+        name,
+        email,
+        avatar_url,
+        status,
+        created_at,
+        updated_at
+      )
+    `)
+    .single()
+
+  if (messageError) {
+    console.error('[CreateThreadReply] Error creating reply:', messageError)
+    throw new Error(`Failed to create reply: ${messageError.message}`)
+  }
+
+  console.log('[CreateThreadReply] Successfully created reply:', message)
+  revalidatePath('/chat')
+  return message
+}

@@ -5,6 +5,8 @@ DECLARE
     general_channel_id TEXT;
     ai_channel_id TEXT;
     docs_message_id UUID;
+    welcome_message_id UUID;
+    thread_id UUID;
 BEGIN
     -- Insert system user and get its ID
     INSERT INTO users (id, email, name, created_at, updated_at)
@@ -60,7 +62,44 @@ BEGIN
         system_user_id,
         CURRENT_TIMESTAMP - INTERVAL '2 days',
         CURRENT_TIMESTAMP - INTERVAL '2 days'
+      )
+    RETURNING id INTO welcome_message_id;
+
+    -- Create a thread for the welcome message
+    INSERT INTO threads (id, channel_id, parent_message_id, created_at)
+    VALUES (
+        gen_random_uuid(),
+        general_channel_id,
+        welcome_message_id,
+        CURRENT_TIMESTAMP - INTERVAL '2 days'
+    )
+    RETURNING id INTO thread_id;
+
+    -- Add some replies to the thread
+    INSERT INTO messages (id, content, channel_id, sender_id, thread_id, created_at, updated_at)
+    VALUES
+      (
+        gen_random_uuid(),
+        'Thanks for the warm welcome! Excited to be here.',
+        general_channel_id,
+        system_user_id,
+        thread_id,
+        CURRENT_TIMESTAMP - INTERVAL '1 day 23 hours',
+        CURRENT_TIMESTAMP - INTERVAL '1 day 23 hours'
       ),
+      (
+        gen_random_uuid(),
+        'Looking forward to collaborating with everyone!',
+        general_channel_id,
+        system_user_id,
+        thread_id,
+        CURRENT_TIMESTAMP - INTERVAL '1 day 22 hours',
+        CURRENT_TIMESTAMP - INTERVAL '1 day 22 hours'
+      );
+
+    -- Continue with other seed messages
+    INSERT INTO messages (id, content, channel_id, sender_id, created_at, updated_at)
+    VALUES
       (
         gen_random_uuid(),
         'Feel free to introduce yourself and connect with your teammates here!',

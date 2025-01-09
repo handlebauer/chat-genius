@@ -1,12 +1,25 @@
 'use client'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Database } from '@/lib/supabase/types'
-import { MessageAttachments } from './message-attachments'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
-import { cn } from '@/lib/utils'
+import { createThread } from '@/lib/actions'
+import { MessageItem } from './message-item'
+
+interface ThreadReply {
+  id: string
+  content: string
+  sender: Database['public']['Tables']['users']['Row']
+  created_at: string
+}
+
+interface Thread {
+  id: string
+  reply_count: number
+  last_reply_at: string
+  replies: ThreadReply[]
+}
 
 interface Message {
   id: string
@@ -15,6 +28,7 @@ interface Message {
   created_at: string
   channel_id: string
   attachments?: Database['public']['Tables']['attachments']['Row'][]
+  thread?: Thread
 }
 
 interface MessageListProps {
@@ -24,9 +38,12 @@ interface MessageListProps {
 export function MessageList({ messages }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const { selectedMessageId, selectMessage } = useStore()
+  const { selectedMessageId, selectMessage, userData } = useStore()
   const [isHighlighted, setIsHighlighted] = useState(false)
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null)
+  const [newlyCreatedThreadIds, setNewlyCreatedThreadIds] = useState<Set<string>>(new Set())
 
   const scrollToBottom = () => {
     if (shouldScrollToBottom) {
@@ -86,44 +103,78 @@ export function MessageList({ messages }: MessageListProps) {
     }
   }
 
+  const handleCreateThread = async (messageId: string, channelId: string) => {
+    try {
+      const thread = await createThread(messageId, channelId)
+      if (thread) {
+        // Wait a short moment for the database to update
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Find the message and check if it has the thread now
+        const message = messages.find(m => m.id === messageId)
+        if (message?.thread) {
+          setExpandedThreadId(thread.id)
+          setNewlyCreatedThreadIds(prev => new Set(prev).add(thread.id))
+        } else {
+          // If the message doesn't have the thread yet, we need to wait for the next message update
+          const cleanup = useStore.subscribe((state, prevState) => {
+            const prevMessage = prevState.messages[channelId]?.find(m => m.id === messageId)
+            const newMessage = state.messages[channelId]?.find(m => m.id === messageId)
+            const hasNewThread = newMessage && 'thread' in newMessage && newMessage.thread && 'id' in newMessage.thread
+
+            if (hasNewThread && (!prevMessage?.thread || prevMessage.thread.id !== (newMessage as Message & { thread: Thread }).thread.id)) {
+              setExpandedThreadId((newMessage as Message & { thread: Thread }).thread.id)
+              setNewlyCreatedThreadIds(prev => new Set(prev).add((newMessage as Message & { thread: Thread }).thread.id))
+              cleanup()
+            }
+          })
+
+          // Clean up the subscription after 5 seconds if it hasn't fired
+          setTimeout(cleanup, 5000)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create thread:', error)
+      // TODO: Add error toast notification
+    } finally {
+      setOpenMenuId(null)
+    }
+  }
+
+  const handleThreadToggle = (threadId: string, isNewlyCreated: boolean) => {
+    if (isNewlyCreated) {
+      setExpandedThreadId(null)
+      setNewlyCreatedThreadIds(prev => {
+        const next = new Set(prev)
+        next.delete(threadId)
+        return next
+      })
+    } else {
+      setExpandedThreadId(
+        expandedThreadId === threadId ? null : threadId
+      )
+    }
+  }
+
   return (
     <ScrollArea className="flex-1" onScroll={handleScroll}>
       <div className="p-4 pb-0 space-y-4">
         {messages.map(message => (
-          <div
+          <MessageItem
             key={message.id}
-            ref={(el) => {
+            message={message}
+            isHighlighted={selectedMessageId === message.id && isHighlighted}
+            openMenuId={openMenuId}
+            expandedThreadId={expandedThreadId}
+            newlyCreatedThreadIds={newlyCreatedThreadIds}
+            currentUser={userData!}
+            onOpenMenuChange={(open, messageId) => setOpenMenuId(open ? messageId : null)}
+            onCreateThread={handleCreateThread}
+            onThreadToggle={handleThreadToggle}
+            messageRef={(el) => {
               if (el) messageRefs.current[message.id] = el
             }}
-            className={cn(
-              "relative group transition-colors duration-1000",
-              selectedMessageId === message.id && isHighlighted && "bg-yellow-100 rounded-lg"
-            )}
-          >
-            <div className="flex gap-2 items-start p-2">
-              <Avatar className="w-7 h-7 mt-[2px]">
-                <AvatarImage
-                  src={message.sender.avatar_url || undefined}
-                  alt={message.sender.name || message.sender.email}
-                />
-                <AvatarFallback className="text-xs">
-                  {message.sender.name
-                    ? message.sender.name.substring(0, 2).toUpperCase()
-                    : message.sender.email.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="space-y-0.5">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium">{message.sender.name || message.sender.email.split('@')[0]}</span>
-                  <span className="text-[11px] text-zinc-500 font-normal">
-                    {new Date(message.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
-                  </span>
-                </div>
-                <div className="text-[13px] leading-relaxed text-zinc-800" dangerouslySetInnerHTML={{ __html: message.content }} />
-                {message.attachments && <MessageAttachments attachments={message.attachments} />}
-              </div>
-            </div>
-          </div>
+          />
         ))}
         <div ref={messagesEndRef} />
       </div>
