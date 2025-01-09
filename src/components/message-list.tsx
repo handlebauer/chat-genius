@@ -42,7 +42,7 @@ export function MessageList({ messages }: MessageListProps) {
   const [isHighlighted, setIsHighlighted] = useState(false)
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null)
+  const [expandedThreadIds, setExpandedThreadIds] = useState<Set<string>>(new Set())
   const [newlyCreatedThreadIds, setNewlyCreatedThreadIds] = useState<Set<string>>(new Set())
 
   const scrollToBottom = () => {
@@ -113,7 +113,7 @@ export function MessageList({ messages }: MessageListProps) {
         // Find the message and check if it has the thread now
         const message = messages.find(m => m.id === messageId)
         if (message?.thread) {
-          setExpandedThreadId(thread.id)
+          setExpandedThreadIds(prev => new Set(prev).add(thread.id))
           setNewlyCreatedThreadIds(prev => new Set(prev).add(thread.id))
         } else {
           // If the message doesn't have the thread yet, we need to wait for the next message update
@@ -123,7 +123,7 @@ export function MessageList({ messages }: MessageListProps) {
             const hasNewThread = newMessage && 'thread' in newMessage && newMessage.thread && 'id' in newMessage.thread
 
             if (hasNewThread && (!prevMessage?.thread || prevMessage.thread.id !== (newMessage as Message & { thread: Thread }).thread.id)) {
-              setExpandedThreadId((newMessage as Message & { thread: Thread }).thread.id)
+              setExpandedThreadIds(prev => new Set(prev).add((newMessage as Message & { thread: Thread }).thread.id))
               setNewlyCreatedThreadIds(prev => new Set(prev).add((newMessage as Message & { thread: Thread }).thread.id))
               cleanup()
             }
@@ -143,16 +143,26 @@ export function MessageList({ messages }: MessageListProps) {
 
   const handleThreadToggle = (threadId: string, isNewlyCreated: boolean) => {
     if (isNewlyCreated) {
-      setExpandedThreadId(null)
+      setExpandedThreadIds(prev => {
+        const next = new Set(prev)
+        next.delete(threadId)
+        return next
+      })
       setNewlyCreatedThreadIds(prev => {
         const next = new Set(prev)
         next.delete(threadId)
         return next
       })
     } else {
-      setExpandedThreadId(
-        expandedThreadId === threadId ? null : threadId
-      )
+      setExpandedThreadIds(prev => {
+        const next = new Set(prev)
+        if (next.has(threadId)) {
+          next.delete(threadId)
+        } else {
+          next.add(threadId)
+        }
+        return next
+      })
     }
   }
 
@@ -165,7 +175,7 @@ export function MessageList({ messages }: MessageListProps) {
             message={message}
             isHighlighted={selectedMessageId === message.id && isHighlighted}
             openMenuId={openMenuId}
-            expandedThreadId={expandedThreadId}
+            expandedThreadId={message.thread ? (expandedThreadIds.has(message.thread.id) ? message.thread.id : null) : null}
             newlyCreatedThreadIds={newlyCreatedThreadIds}
             currentUser={userData!}
             onOpenMenuChange={(open, messageId) => setOpenMenuId(open ? messageId : null)}

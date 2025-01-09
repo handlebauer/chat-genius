@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from '@/components/ui/button'
 import { Input } from "@/components/ui/input"
 import { cn } from '@/lib/utils'
-import { MessageSquare, ChevronDown, ChevronRight } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createThreadReply } from '@/lib/actions'
 import { useClickOutside } from '@/hooks/use-click-outside'
@@ -137,32 +137,33 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
 
   if (!isExpanded) {
     return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onToggle}
-        className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-2 w-full justify-start group/thread ml-9 mt-0.5"
-      >
-        <div className="w-3.5 flex-none">
-          <MessageSquare className="h-3.5 w-3.5" />
-        </div>
-        <div className="flex items-center gap-2 flex-1">
-          <span className="group-hover/thread:underline">{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
-          <span>•</span>
-          <span>{formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
-        </div>
-        <ChevronRight className="h-3.5 w-3.5 flex-none" />
-      </Button>
+      <div className="ml-9">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-2 w-full justify-start group/thread mt-0"
+        >
+          <div className="w-3.5 flex-none">
+            <MessageSquare className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="group-hover/thread:underline">{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
+            <span>•</span>
+            <span>{formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
+          </div>
+        </Button>
+      </div>
     )
   }
 
   return (
-    <div className="ml-9 space-y-2">
+    <div className="ml-9">
       <Button
         variant="ghost"
         size="sm"
         onClick={onToggle}
-        className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-2 w-full justify-start group/thread mt-0"
+        className="h-6 px-2 text-xs text-zinc-900 flex items-center gap-2 w-full justify-start group/thread mt-0"
       >
         <div className="w-3.5 flex-none">
           <MessageSquare className="h-3.5 w-3.5" />
@@ -172,9 +173,8 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
           <span>•</span>
           <span>{formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
         </div>
-        <ChevronDown className="h-3.5 w-3.5 flex-none" />
       </Button>
-      <div className="space-y-2 border-l-2 border-l-zinc-200 pl-4">
+      <div className="mt-2 space-y-2 border-l-2 border-l-zinc-200 pl-4">
         {thread.replies.map(reply => (
           <div key={reply.id} className="flex gap-2 items-start">
             <Avatar className="w-6 h-6">
