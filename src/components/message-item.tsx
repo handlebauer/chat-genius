@@ -71,7 +71,7 @@ export function MessageItem({
       className={cn(
         "relative transition-colors duration-200",
         isHighlighted && "bg-yellow-100 rounded-lg",
-        (openMenuId === message.id || (thread && expandedThreadId === thread.id)) ? "bg-zinc-100" : "hover:bg-zinc-100",
+        (openMenuId === message.id || (thread && expandedThreadId === thread.id && !newlyCreatedThreadIds.has(thread.id))) ? "bg-zinc-100" : "hover:bg-zinc-100",
         "rounded-lg group"
       )}
     >

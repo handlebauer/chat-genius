@@ -47,7 +47,7 @@ function ThreadHeader({ replyCount = 0, lastReplyAt, isNewThread, onClick }: Thr
       size="sm"
       className={cn(
         "h-6 px-2 text-xs flex items-center gap-2 w-full justify-start mt-0.5",
-        isNewThread ? "cursor-default hover:bg-transparent text-zinc-500" : "text-zinc-500 hover:text-zinc-900 group/thread"
+        isNewThread ? "cursor-default hover:text-zinc-500 text-zinc-500" : "text-zinc-500 hover:text-zinc-900 group/thread"
       )}
       onClick={(e) => {
         e.stopPropagation();
@@ -156,7 +156,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
         className="ml-9 space-y-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <ThreadHeader isNewThread replyCount={0} />
+        <ThreadHeader isNewThread />
         <div className="space-y-4 border-l-2 border-l-zinc-200 pl-4">
           <ReplyInput
             currentUser={currentUser}
