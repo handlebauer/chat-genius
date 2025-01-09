@@ -106,7 +106,10 @@ export function MessageItem({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer"
+                className={cn(
+                  "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
+                  openMenuId === message.id && "bg-zinc-200"
+                )}
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -130,7 +133,7 @@ export function MessageItem({
         </div>
       </div>
       {thread && currentUser && (
-        <div className="pb-2">
+        <div className="pb-1">
           <ThreadView
             thread={thread}
             isExpanded={expandedThreadId === thread.id}

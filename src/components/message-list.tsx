@@ -165,7 +165,7 @@ export function MessageList({ messages }: MessageListProps) {
 
   return (
     <ScrollArea className="flex-1" onScroll={handleScroll}>
-      <div className="p-4 pb-0 space-y-4">
+      <div className="p-4 pb-0 space-y-2">
         {messages.map(message => (
           <MessageItem
             key={message.id}
