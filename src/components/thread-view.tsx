@@ -85,16 +85,15 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-2 w-full justify-start group mt-0.5"
+          className="h-6 px-2 text-xs cursor-default flex items-center gap-2 w-full justify-start mt-0.5 hover:bg-transparent isolate"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-3.5 flex-none">
+          <div className="w-3.5 flex-none text-zinc-500">
             <MessageSquare className="h-3.5 w-3.5" />
           </div>
           <div className="flex items-center gap-2 flex-1">
-            <span className="group:underline">New thread</span>
+            <span className="select-none text-zinc-500">New thread</span>
           </div>
-          <ChevronDown className="h-3.5 w-3.5 flex-none" />
         </Button>
         <div
           className="space-y-4 border-l-2 border-l-zinc-200 pl-4"
@@ -202,7 +201,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
             </div>
           </div>
         ))}
-        <div className="flex gap-2 items-center mt-1">
+        <div className="flex gap-2 items-center pt-1">
           <Avatar className="w-6 h-6 flex-none">
             <AvatarImage
               src={currentUser.avatar_url || undefined}
@@ -221,7 +220,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
             onKeyDown={handleKeyDown}
             placeholder="Reply to thread..."
             className={cn(
-              "h-7 text-sm bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400",
+              "h-8 text-sm bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400",
               isSubmitting && "opacity-50 cursor-not-allowed"
             )}
             disabled={isSubmitting}
