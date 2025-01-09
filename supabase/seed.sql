@@ -7,6 +7,7 @@ DECLARE
     docs_message_id UUID;
     welcome_message_id UUID;
     thread_id UUID;
+    ai_welcome_message_id UUID;
 BEGIN
     -- Insert system user and get its ID
     INSERT INTO users (id, email, name, created_at, updated_at)
@@ -159,7 +160,11 @@ BEGIN
         system_user_id,
         CURRENT_TIMESTAMP - INTERVAL '1 day',
         CURRENT_TIMESTAMP - INTERVAL '1 day'
-      ),
+      )
+    RETURNING id INTO ai_welcome_message_id;
+
+    INSERT INTO messages (id, content, channel_id, sender_id, created_at, updated_at)
+    VALUES
       (
         gen_random_uuid(),
         'Share your favorite AI tools, experiences, and insights with the team!',
@@ -168,6 +173,19 @@ BEGIN
         CURRENT_TIMESTAMP - INTERVAL '12 hours',
         CURRENT_TIMESTAMP - INTERVAL '12 hours'
       );
+
+    -- Add reactions to the welcome messages
+    INSERT INTO reactions (message_id, user_id, emoji, created_at)
+    VALUES
+      -- Reactions for general channel welcome message
+      (welcome_message_id, system_user_id, '👋', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+      (welcome_message_id, system_user_id, '🎉', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+      (welcome_message_id, system_user_id, '💫', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+      -- Reactions for AI channel welcome message
+      (ai_welcome_message_id, system_user_id, '🤖', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+      (ai_welcome_message_id, system_user_id, '🚀', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+      (ai_welcome_message_id, system_user_id, '💡', CURRENT_TIMESTAMP - INTERVAL '1 day');
+
 END $$;
 
 -- Add an index on the channel name for faster lookups

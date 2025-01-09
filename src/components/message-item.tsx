@@ -11,7 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MessageAttachments } from './message-attachments'
+import { MessageReactions } from './message-reactions'
 import { ThreadView } from './thread-view'
+import { toggleReaction } from '@/lib/actions'
+import { useStore } from '@/lib/store'
 import type { Database } from '@/lib/supabase/types'
 
 interface ThreadReply {
@@ -36,6 +39,13 @@ interface Message {
   channel_id: string
   attachments?: Database['public']['Tables']['attachments']['Row'][]
   thread?: Thread
+  reactions?: Reaction[]
+}
+
+interface Reaction {
+  emoji: string
+  count: number
+  hasReacted: boolean
 }
 
 interface MessageItemProps {
@@ -64,6 +74,25 @@ export function MessageItem({
   messageRef
 }: MessageItemProps) {
   const thread = message.thread
+
+  const handleReactionClick = async (emoji: string) => {
+    try {
+      // Use the store's toggleReaction for optimistic update
+      useStore.getState().toggleReaction(message.id, message.channel_id, emoji, currentUser.id)
+
+      // Make the API call
+      const result = await toggleReaction(message.id, emoji)
+      if (!result.success) {
+        console.error('Failed to toggle reaction:', result.error)
+        // Revert optimistic update on failure by toggling again
+        useStore.getState().toggleReaction(message.id, message.channel_id, emoji, currentUser.id)
+        // TODO: Add error toast notification
+      }
+    } catch (error) {
+      console.error('Error toggling reaction:', error)
+      // TODO: Add error toast notification
+    }
+  }
 
   return (
     <div
@@ -95,7 +124,10 @@ export function MessageItem({
             </span>
           </div>
           <div className="text-[13px] leading-relaxed text-zinc-800" dangerouslySetInnerHTML={{ __html: message.content }} />
-          {message.attachments && <MessageAttachments attachments={message.attachments} />}
+          <div className="pl-0 pb-1">
+            {message.attachments && <MessageAttachments attachments={message.attachments} />}
+            <MessageReactions reactions={message.reactions} onReactionClick={handleReactionClick} />
+          </div>
         </div>
         <div className={cn(
           "opacity-0 group-hover:opacity-100 transition-opacity",

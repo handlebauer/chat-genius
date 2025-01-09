@@ -93,6 +93,10 @@ CREATE TABLE reactions (
     UNIQUE(message_id, user_id, emoji)
 );
 
+-- Enable realtime for reactions table
+ALTER TABLE reactions REPLICA IDENTITY FULL;
+ALTER PUBLICATION supabase_realtime ADD TABLE reactions;
+
 -- Create attachments table
 CREATE TABLE attachments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

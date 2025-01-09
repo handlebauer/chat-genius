@@ -17,6 +17,12 @@ interface Thread {
   replies: ThreadReply[]
 }
 
+interface Reaction {
+  emoji: string
+  count: number
+  hasReacted: boolean
+}
+
 interface Message {
   id: string
   content: string
@@ -25,6 +31,7 @@ interface Message {
   channel_id: string
   attachments?: Database['public']['Tables']['attachments']['Row'][]
   thread?: Thread
+  reactions?: Reaction[]
 }
 
 export interface OnlineUser {
@@ -49,6 +56,8 @@ interface MessagesState {
   setMessagesLoading: (channelId: string | undefined, loading: boolean) => void
   selectMessage: (messageId: string | null) => void
   getMessageById: (messageId: string) => { message: Message, channelId: string } | null
+  updateMessageReactions: (messageId: string, channelId: string, reactions: Reaction[]) => void
+  toggleReaction: (messageId: string, channelId: string, emoji: string, userId: string) => void
 }
 
 interface OnlineUsersState {
@@ -121,6 +130,63 @@ export const useStore = create<Store>((set, get) => ({
       }
     }
     return null
+  },
+  updateMessageReactions: (messageId, channelId, reactions) => {
+    set((state) => ({
+      messages: {
+        ...state.messages,
+        [channelId]: state.messages[channelId]?.map(message =>
+          message.id === messageId
+            ? { ...message, reactions }
+            : message
+        ) || []
+      }
+    }))
+  },
+  toggleReaction: (messageId, channelId, emoji, userId) => {
+    set((state) => {
+      const messages = state.messages[channelId] || []
+      const message = messages.find(m => m.id === messageId)
+      if (!message) return state
+
+      const currentReactions = message.reactions || []
+      const existingReaction = currentReactions.find(r => r.emoji === emoji)
+
+      let updatedReactions: Reaction[]
+      if (existingReaction) {
+        // Remove or update the reaction
+        if (existingReaction.count === 1 && existingReaction.hasReacted) {
+          updatedReactions = currentReactions.filter(r => r.emoji !== emoji)
+        } else {
+          updatedReactions = currentReactions.map(r =>
+            r.emoji === emoji
+              ? {
+                  ...r,
+                  count: r.hasReacted ? r.count - 1 : r.count + 1,
+                  hasReacted: !r.hasReacted
+                }
+              : r
+          )
+        }
+      } else {
+        // Add new reaction
+        updatedReactions = [
+          ...currentReactions,
+          { emoji, count: 1, hasReacted: true }
+        ]
+      }
+
+      return {
+        messages: {
+          ...state.messages,
+          [channelId]: messages.map(m =>
+            m.id === messageId
+              ? { ...m, reactions: updatedReactions }
+              : m
+          )
+        }
+      }
+    })
   },
 
   // Online users slice

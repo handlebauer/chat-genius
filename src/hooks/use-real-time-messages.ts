@@ -36,6 +36,13 @@ interface Message {
   channel_id: string
   attachments?: Database['public']['Tables']['attachments']['Row'][]
   thread?: Thread
+  reactions?: Reaction[]
+}
+
+interface Reaction {
+  emoji: string
+  count: number
+  hasReacted: boolean
 }
 
 function isMessageRow(obj: any): obj is MessageRow {
@@ -49,13 +56,14 @@ function isMessageRow(obj: any): obj is MessageRow {
 
 export function useRealTimeMessages(channelId: string | undefined) {
   const supabase = createClientComponentClient<Database>()
-  const { messages, setMessages, setMessagesLoading, addMessage } = useStore()
+  const { messages, setMessages, setMessagesLoading, addMessage, userData } = useStore()
 
   // Load initial messages
   useEffect(() => {
-    if (!channelId) return
+    if (!channelId || !userData) return // Don't load messages until we have both channelId and userData
 
     async function loadMessages() {
+      const currentUserId = userData!.id // Capture userData.id since we know it exists here
       setMessagesLoading(channelId, true)
 
       // First, get all threads in this channel to map parent messages
@@ -132,10 +140,14 @@ export function useRealTimeMessages(channelId: string | undefined) {
             content_type,
             created_at,
             updated_at
+          ),
+          reactions(
+            emoji,
+            user_id
           )
         `)
         .eq('channel_id', channelId)
-        .is('thread_id', null) // Only get main messages, not thread replies
+        .is('thread_id', null)
         .order('created_at')
 
       if (messagesError) {
@@ -146,20 +158,42 @@ export function useRealTimeMessages(channelId: string | undefined) {
 
       if (messagesData) {
         // Combine messages with their thread data
-        const messagesWithThreads = messagesData.map(message => ({
-          ...message,
-          sender: message.sender as unknown as Database['public']['Tables']['users']['Row'],
-          thread: threadMap.get(message.id)
-        })) as unknown as Message[]
+        const messagesWithThreadsAndReactions = messagesData.map(message => {
+          // Process reactions
+          const reactionGroups = (message.reactions || []).reduce((acc: Record<string, { count: number, users: string[] }>, reaction: any) => {
+            if (!acc[reaction.emoji]) {
+              acc[reaction.emoji] = { count: 0, users: [] }
+            }
+            acc[reaction.emoji].count++
+            acc[reaction.emoji].users.push(reaction.user_id)
+            return acc
+          }, {})
 
-        setMessages(channelId, messagesWithThreads)
+          const reactions = Object.entries(reactionGroups).map(([emoji, data]) => {
+            const hasReacted = data.users.includes(currentUserId)
+            return {
+              emoji,
+              count: data.count,
+              hasReacted
+            }
+          })
+
+          return {
+            ...message,
+            sender: message.sender as unknown as Database['public']['Tables']['users']['Row'],
+            thread: threadMap.get(message.id),
+            reactions
+          }
+        }) as unknown as Message[]
+
+        setMessages(channelId, messagesWithThreadsAndReactions)
       }
 
       setMessagesLoading(channelId, false)
     }
 
     loadMessages()
-  }, [channelId, supabase, setMessages, setMessagesLoading])
+  }, [channelId, userData, supabase, setMessages, setMessagesLoading])
 
   // Set up real-time subscription
   useEffect(() => {
@@ -287,6 +321,89 @@ export function useRealTimeMessages(channelId: string | undefined) {
       channel.unsubscribe()
     }
   }, [supabase, channelId, messages, setMessages, addMessage])
+
+  // Set up real-time subscription for reactions
+  useEffect(() => {
+    if (!channelId || !userData?.id) return
+
+    type ReactionRecord = Database['public']['Tables']['reactions']['Row']
+    type ReactionPayload = RealtimePostgresChangesPayload<ReactionRecord>
+
+    const channel = supabase
+      .channel(`reactions-${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reactions'
+        },
+        async (payload: ReactionPayload) => {
+          const record = payload.new || payload.old
+          if (!record || !('message_id' in record) || !('user_id' in record)) return
+
+          const messageId = record.message_id
+          if (typeof messageId !== 'string') return
+
+          // Skip if this is our own reaction (handled by optimistic update)
+          if (record.user_id === userData.id) return
+
+          // First verify this message belongs to our channel
+          const { data: message } = await supabase
+            .from('messages')
+            .select('channel_id')
+            .eq('id', messageId)
+            .single()
+
+          if (!message || message.channel_id !== channelId) return
+
+          // Get the current message from the store
+          const currentMessage = messages[channelId]?.find(m => m.id === messageId)
+          if (!currentMessage) return
+
+          // Get the updated reactions for the message
+          const { data: updatedReactions } = await supabase
+            .from('reactions')
+            .select('emoji, user_id')
+            .eq('message_id', messageId)
+
+          if (updatedReactions) {
+            const reactionGroups = updatedReactions.reduce((acc: Record<string, { count: number, users: string[] }>, reaction) => {
+              if (!acc[reaction.emoji]) {
+                acc[reaction.emoji] = { count: 0, users: [] }
+              }
+              acc[reaction.emoji].count++
+              acc[reaction.emoji].users.push(reaction.user_id)
+              return acc
+            }, {})
+
+            const formattedReactions = Object.entries(reactionGroups).map(([emoji, data]) => ({
+              emoji,
+              count: data.count,
+              hasReacted: data.users.includes(userData.id)
+            }))
+
+            // Only update if the reactions have actually changed
+            const currentReactions = currentMessage.reactions || []
+            const hasChanged = JSON.stringify(currentReactions) !== JSON.stringify(formattedReactions)
+
+            if (hasChanged) {
+              useStore.getState().updateMessageReactions(
+                messageId,
+                channelId,
+                formattedReactions
+              )
+            }
+          }
+        }
+      )
+
+    channel.subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [channelId, supabase, userData?.id, messages])
 
   return {
     messages: channelId ? messages[channelId] || [] : [],
