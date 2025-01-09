@@ -71,11 +71,11 @@ export function MessageItem({
       className={cn(
         "relative transition-colors duration-200",
         isHighlighted && "bg-yellow-100 rounded-lg",
-        openMenuId === message.id ? "bg-zinc-100" : "hover:bg-zinc-100",
+        (openMenuId === message.id || (thread && expandedThreadId === thread.id)) ? "bg-zinc-100" : "hover:bg-zinc-100",
         "rounded-lg group"
       )}
     >
-      <div className="flex gap-2 items-start p-2">
+      <div className="flex gap-2 items-start p-1 pb-[2px]">
         <Avatar className="w-7 h-7 mt-[2px]">
           <AvatarImage
             src={message.sender.avatar_url || undefined}
@@ -106,23 +106,25 @@ export function MessageItem({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 hover:bg-zinc-200"
+                className="h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem className="gap-2">
+              <DropdownMenuItem className="gap-2 cursor-pointer">
                 <SmilePlus className="h-4 w-4" />
                 Add reaction
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2"
-                onClick={() => onCreateThread(message.id, message.channel_id)}
-              >
-                <MessageSquare className="h-4 w-4" />
-                Create thread
-              </DropdownMenuItem>
+              {(!thread || thread.reply_count === 0) && (
+                <DropdownMenuItem
+                  className="gap-2 cursor-pointer"
+                  onClick={() => onCreateThread(message.id, message.channel_id)}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Create thread
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

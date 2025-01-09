@@ -149,7 +149,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
         <div className="flex items-center gap-2 flex-1">
           <span className="group-hover/thread:underline">{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
           <span>•</span>
-          <span>Last reply {formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
+          <span>{formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
         </div>
         <ChevronRight className="h-3.5 w-3.5 flex-none" />
       </Button>
@@ -162,7 +162,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
         variant="ghost"
         size="sm"
         onClick={onToggle}
-        className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-2 w-full justify-start group/thread mt-0.5"
+        className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-2 w-full justify-start group/thread mt-0"
       >
         <div className="w-3.5 flex-none">
           <MessageSquare className="h-3.5 w-3.5" />
@@ -170,7 +170,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
         <div className="flex items-center gap-2 flex-1">
           <span className="group-hover/thread:underline">{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
           <span>•</span>
-          <span>Last reply {formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
+          <span>{formatDistanceToNow(new Date(thread.last_reply_at))} ago</span>
         </div>
         <ChevronDown className="h-3.5 w-3.5 flex-none" />
       </Button>
