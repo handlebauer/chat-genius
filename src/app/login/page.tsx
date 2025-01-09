@@ -39,8 +39,8 @@ const features = [
   },
   {
     title: 'Message Threads',
-    status: 'wip',
-    description: 'Will allow users to create threaded conversations from any message with their own real-time updates and notifications.'
+    status: 'checked',
+    description: 'Threaded conversations allow users to create focused discussion threads with real-time updates.'
   },
   {
     title: 'Reactions',
