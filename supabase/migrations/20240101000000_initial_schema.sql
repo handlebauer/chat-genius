@@ -193,3 +193,6 @@ USING (
 
 -- Enable RLS on storage.objects
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- Add an index on the channel name for faster lookups
+CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name);
