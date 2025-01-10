@@ -128,10 +128,10 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
   })
 
   useEffect(() => {
-    if ((isNewlyCreated || isExpanded) && inputRef.current) {
-      inputRef.current.focus()
+    if (isNewlyCreated || isExpanded || isSubmitting === false) {
+      inputRef.current?.focus()
     }
-  }, [isNewlyCreated, isExpanded])
+  }, [isNewlyCreated, isExpanded, isSubmitting])
 
   const handleKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && replyText.trim() && !isSubmitting) {
@@ -139,6 +139,10 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
         setIsSubmitting(true)
         await createThreadReply(thread.id, replyText)
         setReplyText('')
+        // Focus the input after a short delay to ensure state updates have completed
+        setTimeout(() => {
+          inputRef.current?.focus()
+        }, 0)
       } catch (error) {
         console.error('Failed to send reply:', error)
         // TODO: Add error toast notification
@@ -153,7 +157,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
     return (
       <div
         ref={containerRef}
-        className="ml-9"
+        className="ml-9 pb-1"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-l-2 border-l-zinc-200 pl-4">
@@ -222,7 +226,7 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
             </div>
           </div>
         ))}
-        <div className="pt-1">
+        <div className="py-1">
           <ReplyInput
             currentUser={currentUser}
             replyText={replyText}
