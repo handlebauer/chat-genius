@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:typegen": "bunx supabase gen types typescript --linked > src/lib/supabase/types_test.ts",
+    "db:typegen": "bunx supabase gen types typescript --linked > src/lib/supabase/types.ts",
     "db:init": "yes | bunx supabase db reset --linked && bun run db:typegen",
     "db:migrate": "bunx supabase db migrate && bun run db:typegen"
   },
