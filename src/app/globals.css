@@ -15,3 +15,50 @@ body {
     font-family: var(--font-outfit);
   }
 }
+
+/* Emoji Picker Customization */
+.EmojiPickerReact {
+  --epr-hover-bg-color: theme('colors.zinc.100') !important;
+  --epr-focus-bg-color: theme('colors.zinc.200') !important;
+  --epr-highlight-color: theme('colors.zinc.900') !important;
+  --epr-search-border-color: theme('colors.zinc.200') !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* Hides the emoji search bar since we're using quick reactions */
+.EmojiPickerReact .epr-search {
+  display: none !important;
+}
+
+/* Styles the category label headers */
+.EmojiPickerReact .epr-emoji-category-label {
+  text-transform: uppercase !important;
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  color: theme('colors.zinc.500') !important;
+  background: white !important;
+  padding: 0.25rem 0.75rem !important;
+  margin: 0 !important;
+}
+
+/* Sets width of the scrollbar in emoji list */
+.EmojiPickerReact .epr-body::-webkit-scrollbar {
+  width: 0.375rem !important;
+}
+
+/* Makes scrollbar track transparent */
+.EmojiPickerReact .epr-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* Styles the scrollbar thumb */
+.EmojiPickerReact .epr-body::-webkit-scrollbar-thumb {
+  background: theme('colors.zinc.200') !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Styles scrollbar thumb on hover */
+.EmojiPickerReact .epr-body::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.zinc.300') !important;
+}

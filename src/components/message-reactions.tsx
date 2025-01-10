@@ -15,22 +15,23 @@ export function MessageReactions({ reactions, onReactionClick }: MessageReaction
   if (!reactions?.length || !onReactionClick) return null
 
   return (
-    <div className="flex flex-wrap gap-1.5 mt-1">
+    <div className="flex flex-wrap gap-1 mt-1">
       {reactions.map((reaction) => (
         <button
           key={reaction.emoji}
           onClick={() => onReactionClick(reaction.emoji)}
           className={cn(
-            "flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors",
+            "flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg transition-colors",
             reaction.hasReacted
               ? "bg-zinc-200 border border-zinc-300 hover:bg-zinc-300"
-              : "bg-transparent border border-zinc-200 hover:bg-zinc-50"
+              : "bg-transparent border border-zinc-200 hover:bg-white hover:border-zinc-300 hover:shadow-sm"
           )}
         >
-          <span>{reaction.emoji}</span>
+          <span className="scale-110 leading-none">{reaction.emoji}</span>
           <span className={cn(
-            "text-zinc-600",
-            reaction.hasReacted && "text-zinc-700"
+            "text-zinc-600 transition-colors text-sm font-medium tabular-nums w-3 text-center tracking-tight",
+            reaction.hasReacted && "text-zinc-700",
+            !reaction.hasReacted && "group-hover:text-zinc-700"
           )}>{reaction.count}</span>
         </button>
       ))}

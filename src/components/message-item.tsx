@@ -3,19 +3,26 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { MoreHorizontal, SmilePlus, MessageSquare } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { SmilePlus, Reply } from 'lucide-react'
 import { MessageAttachments } from './message-attachments'
 import { MessageReactions } from './message-reactions'
 import { ThreadView } from './thread-view'
 import { toggleReaction } from '@/lib/actions'
 import { useStore } from '@/lib/store'
 import type { Database } from '@/lib/supabase/types'
+import EmojiPicker, { Theme, Categories, EmojiStyle } from 'emoji-picker-react'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useState } from 'react'
 
 interface ThreadReply {
   id: string
@@ -61,6 +68,50 @@ interface MessageItemProps {
   messageRef?: (el: HTMLDivElement | null) => void
 }
 
+
+const customPickerStyles = {
+  "--epr-category-navigation-button-size": "24px",
+  "--epr-emoji-size": "24px",
+  "--epr-header-padding": "0.5rem",
+  "--epr-category-label-height": "24px",
+  "--epr-emoji-padding": "0.375rem",
+} as React.CSSProperties
+
+const customCategoryOrder = [
+  {
+    category: Categories.SMILEYS_PEOPLE,
+    name: "Smileys & People"
+  },
+  {
+    category: Categories.ANIMALS_NATURE,
+    name: "Animals & Nature"
+  },
+  {
+    category: Categories.FOOD_DRINK,
+    name: "Food & Drink"
+  },
+  {
+    category: Categories.ACTIVITIES,
+    name: "Activities"
+  },
+  {
+    category: Categories.TRAVEL_PLACES,
+    name: "Travel & Places"
+  },
+  {
+    category: Categories.OBJECTS,
+    name: "Objects"
+  },
+  {
+    category: Categories.SYMBOLS,
+    name: "Symbols"
+  },
+  {
+    category: Categories.FLAGS,
+    name: "Flags"
+  }
+]
+
 export function MessageItem({
   message,
   isHighlighted,
@@ -74,9 +125,11 @@ export function MessageItem({
   messageRef
 }: MessageItemProps) {
   const thread = message.thread
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false)
 
   const handleReactionClick = async (emoji: string) => {
     try {
+      setIsEmojiOpen(false)
       // Use the store's toggleReaction for optimistic update
       useStore.getState().toggleReaction(message.id, message.channel_id, emoji, currentUser.id)
 
@@ -104,7 +157,7 @@ export function MessageItem({
         "rounded-lg group"
       )}
     >
-      <div className="flex gap-2 items-start p-1 pb-[2px]">
+      <div className="flex gap-2 items-start p-1 pb-[2px] relative">
         <Avatar className="w-7 h-7 mt-[2px]">
           <AvatarImage
             src={message.sender.avatar_url || undefined}
@@ -130,38 +183,82 @@ export function MessageItem({
           </div>
         </div>
         <div className={cn(
-          "opacity-0 group-hover:opacity-100 transition-opacity",
+          "absolute right-1 top-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
           openMenuId === message.id && "opacity-100"
         )}>
-          <DropdownMenu open={openMenuId === message.id} onOpenChange={(open) => onOpenMenuChange(open, message.id)}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
-                  openMenuId === message.id && "bg-zinc-200"
-                )}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem className="gap-2 cursor-pointer">
-                <SmilePlus className="h-4 w-4" />
-                Add reaction
-              </DropdownMenuItem>
+          <TooltipProvider delayDuration={150}>
+            <div className="flex gap-0.5">
+              <div className="relative">
+                <Tooltip>
+                  <Popover open={isEmojiOpen} onOpenChange={setIsEmojiOpen}>
+                    <div className="flex">
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
+                              openMenuId === message.id && "bg-zinc-200"
+                            )}
+                          >
+                            <SmilePlus className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                    </div>
+                    <PopoverContent
+                      className="w-[352px] p-0"
+                      align="end"
+                      sideOffset={5}
+                    >
+                      <div className="relative">
+                        <EmojiPicker
+                          theme={Theme.LIGHT}
+                          onEmojiClick={(emojiData) => {
+                            handleReactionClick(emojiData.emoji)
+                          }}
+                          lazyLoadEmojis
+                          searchDisabled
+                          skinTonesDisabled
+                          emojiStyle={EmojiStyle.NATIVE}
+                          height={280}
+                          width="100%"
+                          previewConfig={{ showPreview: false }}
+                          categories={customCategoryOrder}
+                          style={customPickerStyles}
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <TooltipContent side="bottom" sideOffset={4}>
+                    Add reaction
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
               {(!thread || thread.reply_count === 0) && (
-                <DropdownMenuItem
-                  className="gap-2 cursor-pointer"
-                  onClick={() => onCreateThread(message.id, message.channel_id)}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Create thread
-                </DropdownMenuItem>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
+                        openMenuId === message.id && "bg-zinc-200"
+                      )}
+                      onClick={() => onCreateThread(message.id, message.channel_id)}
+                    >
+                      <Reply className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={4}>
+                    Start thread
+                  </TooltipContent>
+                </Tooltip>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+          </TooltipProvider>
         </div>
       </div>
       {thread && currentUser && (
