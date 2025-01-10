@@ -153,11 +153,10 @@ export function ThreadView({ thread, isExpanded, onToggle, currentUser, isNewlyC
     return (
       <div
         ref={containerRef}
-        className="ml-9 space-y-2"
+        className="ml-9"
         onClick={(e) => e.stopPropagation()}
       >
-        <ThreadHeader isNewThread />
-        <div className="space-y-4 border-l-2 border-l-zinc-200 pl-4">
+        <div className="border-l-2 border-l-zinc-200 pl-4">
           <ReplyInput
             currentUser={currentUser}
             replyText={replyText}
