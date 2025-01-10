@@ -4,8 +4,8 @@ export interface SearchResult {
   messages: Array<{
     id: string;
     content: string;
-    created_at: string;
-    channel_id: string;
+    created_at: string | null;
+    channel_id: string | null;
     sender: {
       id: string;
       name: string;
@@ -113,7 +113,7 @@ export function SearchResults({
               </span>
             </div>
             <span className="text-xs text-zinc-400">
-              {formatDate(message.created_at)}
+              {message.created_at ? formatDate(message.created_at) : 'Unknown Date'}
             </span>
           </div>
           <p className="text-sm text-zinc-600 line-clamp-2">

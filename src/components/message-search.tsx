@@ -13,8 +13,8 @@ export interface SearchResult {
   messages: Array<{
     id: string;
     content: string;
-    created_at: string;
-    channel_id: string;
+    created_at: string | null;
+    channel_id: string | null;
     sender: {
       id: string;
       name: string;

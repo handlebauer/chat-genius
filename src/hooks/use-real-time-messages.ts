@@ -61,9 +61,9 @@ export function useRealTimeMessages(channelId: string | undefined) {
   // Load initial messages
   useEffect(() => {
     if (!channelId || !userData) return // Don't load messages until we have both channelId and userData
+    const currentUserId = userData.id
 
     async function loadMessages() {
-      const currentUserId = userData!.id // Capture userData.id since we know it exists here
       setMessagesLoading(channelId, true)
 
       // First, get all threads in this channel to map parent messages
@@ -88,7 +88,7 @@ export function useRealTimeMessages(channelId: string | undefined) {
             )
           )
         `)
-        .eq('channel_id', channelId)
+        .eq('channel_id', channelId as string)
 
       // Create a map of parent message IDs to their thread data
       const threadMap = new Map(
@@ -146,7 +146,7 @@ export function useRealTimeMessages(channelId: string | undefined) {
             user_id
           )
         `)
-        .eq('channel_id', channelId)
+        .eq('channel_id', channelId as string)
         .is('thread_id', null)
         .order('created_at')
 
@@ -161,6 +161,8 @@ export function useRealTimeMessages(channelId: string | undefined) {
         const messagesWithThreadsAndReactions = messagesData.map(message => {
           // Process reactions
           const reactionGroups = (message.reactions || []).reduce((acc: Record<string, { count: number, users: string[] }>, reaction: any) => {
+            if (!reaction || !reaction.emoji || reaction.user_id === null) return acc;
+
             if (!acc[reaction.emoji]) {
               acc[reaction.emoji] = { count: 0, users: [] }
             }
@@ -369,6 +371,8 @@ export function useRealTimeMessages(channelId: string | undefined) {
 
           if (updatedReactions) {
             const reactionGroups = updatedReactions.reduce((acc: Record<string, { count: number, users: string[] }>, reaction) => {
+              if (!reaction || !reaction.emoji || reaction.user_id === null) return acc;
+
               if (!acc[reaction.emoji]) {
                 acc[reaction.emoji] = { count: 0, users: [] }
               }

@@ -60,8 +60,8 @@ export async function getOrCreateDMChannel(currentUserId: string, otherUserId: s
 interface Message {
   id: string;
   content: string;
-  created_at: string;
-  channel_id: string;
+  created_at: string | null;
+  channel_id: string | null;
   sender: {
     id: string;
     name: string;
@@ -75,6 +75,7 @@ interface SearchMessage extends Message {
     name: string;
     type: string;
   };
+  created_at: string | null;
 }
 
 type DatabaseMessageWithRank = Database['public']['Tables']['messages']['Row'] & {

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "reset": "yes | npx supabase db reset --linked"
+    "db:typegen": "bunx supabase gen types typescript --linked > src/lib/supabase/types_test.ts",
+    "db:init": "yes | bunx supabase db reset --linked && bun run db:typegen",
+    "db:migrate": "bunx supabase db migrate && bun run db:typegen"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.2",
