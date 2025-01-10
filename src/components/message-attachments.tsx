@@ -1,6 +1,6 @@
 'use client'
 
-import { FileIcon, ImageIcon, FileTextIcon, FileArchiveIcon, FileVideoIcon, Download } from 'lucide-react'
+import { FileIcon, ImageIcon, FileTextIcon, FileArchiveIcon, FileVideoIcon, Download, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Database } from '@/lib/supabase/types'
 import { formatFileSize } from '@/lib/utils'
@@ -59,11 +59,19 @@ function AttachmentContent({ attachment }: { attachment: Attachment }) {
             className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
-          <div className="absolute inset-0 bg-black/0 group-hover/attachment:bg-black/10 transition-colors">
+          <div className="absolute flex items-end justify-end gap-x-1 p-1 inset-0 bg-black/0 group-hover/attachment:bg-black/10 transition-colors">
             <Button
               variant="ghost"
               size="icon"
-              className="absolute bottom-2 right-2 h-8 w-8 opacity-0 group-hover/attachment:opacity-100 transition-opacity bg-black/60 hover:bg-black/80"
+              className="h-8 w-8 opacity-0 group-hover/attachment:opacity-100 transition-opacity bg-black/60 hover:bg-black/80"
+              onClick={() => window.open(publicUrl, '_blank')}
+            >
+              <Eye className="w-4 h-4 text-white" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 group-hover/attachment:opacity-100 transition-opacity bg-black/60 hover:bg-black/80"
               onClick={handleDownload}
             >
               <Download className="w-4 h-4 text-white" />
@@ -88,8 +96,9 @@ function AttachmentContent({ attachment }: { attachment: Attachment }) {
         variant="ghost"
         size="icon"
         className="h-8 w-8 p-0 opacity-0 group-hover/attachment:opacity-100 transition-opacity"
+        onClick={() => window.open(publicUrl, '_blank')}
       >
-        <Download className="w-4 h-4" />
+        <Eye className="w-4 h-4" />
       </Button>
     </div>
   )
