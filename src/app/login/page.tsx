@@ -44,8 +44,8 @@ const features = [
   },
   {
     title: 'Reactions',
-    status: 'unchecked',
-    description: 'Will enable users to react to messages with emojis, including frequently used suggestions and custom emoji support.'
+    status: 'checked',
+    description: 'Enables users to react to messages with emojis and see reaction counts in real-time.'
   }
 ]
 

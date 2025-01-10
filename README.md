@@ -20,6 +20,7 @@ A real-time messaging platform designed for team collaboration, featuring secure
 - User status tracking (online, away, offline)
 - Message search functionality with keyboard shortcuts (Cmd/Ctrl + K)
 - Threaded conversations with real-time updates and notifications
+- Emoji reactions with real-time updates and reaction counts
 
 ### Rich Message Editor
 - Rich text formatting (bold, italic, strikethrough)
