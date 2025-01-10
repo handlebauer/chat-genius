@@ -4,7 +4,7 @@ DECLARE
     system_user_id UUID;
     general_channel_id TEXT;
     ai_channel_id TEXT;
-    docs_message_id UUID;
+    meme_message_id UUID;
     welcome_message_id UUID;
     thread_id UUID;
     ai_welcome_message_id UUID;
@@ -13,8 +13,8 @@ BEGIN
     INSERT INTO users (id, email, name, created_at, updated_at)
     VALUES (
         gen_random_uuid(),
-        'system@chatgenius.local',
-        'System',
+        'system@gauntletai.com',
+        'GauntletAI Bot',
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     )
@@ -41,7 +41,7 @@ BEGIN
       ),
       (
         gen_ulid(),
-        'ai',
+        'ai-memes',
         false,
         system_user_id,
         CURRENT_TIMESTAMP,
@@ -51,14 +51,14 @@ BEGIN
 
     -- Get channel IDs for message insertion
     SELECT id INTO general_channel_id FROM channels WHERE name = 'general';
-    SELECT id INTO ai_channel_id FROM channels WHERE name = 'ai';
+    SELECT id INTO ai_channel_id FROM channels WHERE name = 'ai-memes';
 
     -- Insert seed messages for general channel
     INSERT INTO messages (id, content, channel_id, sender_id, created_at, updated_at)
     VALUES
       (
         gen_random_uuid(),
-        'Welcome to ChatGenius! This is the general channel for team-wide discussions.',
+        'Welcome to GauntletAI, where we make AI our code monkey so we can focus on the actually interesting shit 🚀',
         general_channel_id,
         system_user_id,
         CURRENT_TIMESTAMP - INTERVAL '2 days',
@@ -81,7 +81,7 @@ BEGIN
     VALUES
       (
         gen_random_uuid(),
-        'Thanks for the warm welcome! Excited to be here.',
+        'Pro tip: ChatGPT is like that intern who sometimes writes brilliant code and sometimes tries to import React into a CSS file',
         general_channel_id,
         system_user_id,
         thread_id,
@@ -90,7 +90,7 @@ BEGIN
       ),
       (
         gen_random_uuid(),
-        'Looking forward to collaborating with everyone!',
+        'If you''re spending more time fixing AI''s code than writing it yourself, you''re doing it wrong 🤦',
         general_channel_id,
         system_user_id,
         thread_id,
@@ -103,7 +103,7 @@ BEGIN
     VALUES
       (
         gen_random_uuid(),
-        'Feel free to introduce yourself and connect with your teammates here!',
+        'Survival guide: 1) AI is your junior dev with imposter syndrome 2) Trust but verify (lol jk, just assume it''s wrong) 3) When in doubt, read the docs that AI should''ve read but didn''t',
         general_channel_id,
         system_user_id,
         CURRENT_TIMESTAMP - INTERVAL '1 day',
@@ -111,22 +111,22 @@ BEGIN
       ),
       (
         gen_random_uuid(),
-        'Remember to check out our documentation for tips on using ChatGenius effectively.',
+        'Just watched AI generate a 500-line solution for something that needed 5 lines. Peak comedy. 💀',
         general_channel_id,
         system_user_id,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
       );
 
-    -- Get the ID of the documentation message
-    SELECT id INTO docs_message_id
+    -- Get the ID of the meme message
+    SELECT id INTO meme_message_id
     FROM messages
-    WHERE content LIKE '%documentation%'
+    WHERE content LIKE '%comedy%'
     AND channel_id = general_channel_id
     ORDER BY created_at DESC
     LIMIT 1;
 
-    -- Insert a sample PDF attachment for the documentation message
+    -- Insert a sample meme attachment
     INSERT INTO attachments (
         id,
         message_id,
@@ -140,22 +140,22 @@ BEGIN
     )
     VALUES (
         gen_random_uuid(),
-        docs_message_id,
-        'chatgenius-quickstart-guide.pdf',
-        1048576, -- 1MB sample size
-        'pdf',
-        'public/attachments/chatgenius-quickstart-guide.pdf',
-        'application/pdf',
+        meme_message_id,
+        'debugging-in-prod.gif',
+        524288, -- 512KB sample size
+        'gif',
+        'public/attachments/debugging-in-prod.gif',
+        'image/gif',
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     );
 
-    -- Insert seed messages for ai channel
+    -- Insert seed messages for ai-memes channel
     INSERT INTO messages (id, content, channel_id, sender_id, created_at, updated_at)
     VALUES
       (
         gen_random_uuid(),
-        'Welcome to the AI channel! Here we discuss all things artificial intelligence.',
+        'Welcome to AI-memes, where we document the hilarious shit our AI overlords try to pass off as production-ready code 🤖',
         ai_channel_id,
         system_user_id,
         CURRENT_TIMESTAMP - INTERVAL '1 day',
@@ -167,7 +167,7 @@ BEGIN
     VALUES
       (
         gen_random_uuid(),
-        'Share your favorite AI tools, experiences, and insights with the team!',
+        'ChatGPT just tried to solve a race condition by adding more race conditions. Outstanding move. 👌',
         ai_channel_id,
         system_user_id,
         CURRENT_TIMESTAMP - INTERVAL '12 hours',
@@ -178,13 +178,13 @@ BEGIN
     INSERT INTO reactions (message_id, user_id, emoji, created_at)
     VALUES
       -- Reactions for general channel welcome message
-      (welcome_message_id, system_user_id, '👋', CURRENT_TIMESTAMP - INTERVAL '2 days'),
-      (welcome_message_id, system_user_id, '🎉', CURRENT_TIMESTAMP - INTERVAL '2 days'),
-      (welcome_message_id, system_user_id, '💫', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+      (welcome_message_id, system_user_id, '🔥', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+      (welcome_message_id, system_user_id, '💀', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+      (welcome_message_id, system_user_id, '🤯', CURRENT_TIMESTAMP - INTERVAL '2 days'),
       -- Reactions for AI channel welcome message
       (ai_welcome_message_id, system_user_id, '🤖', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-      (ai_welcome_message_id, system_user_id, '🚀', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-      (ai_welcome_message_id, system_user_id, '💡', CURRENT_TIMESTAMP - INTERVAL '1 day');
+      (ai_welcome_message_id, system_user_id, '🧠', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+      (ai_welcome_message_id, system_user_id, '☠️', CURRENT_TIMESTAMP - INTERVAL '1 day');
 
 END $$;
 
@@ -192,4 +192,4 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name);
 
 -- Add a comment explaining the purpose of these channels
-COMMENT ON TABLE channels IS 'Chat channels for team communication';
+COMMENT ON TABLE channels IS 'Where devs come to celebrate and/or roast AI-assisted development';
