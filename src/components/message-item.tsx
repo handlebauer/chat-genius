@@ -22,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 interface ThreadReply {
   id: string
@@ -122,12 +122,54 @@ export function MessageItem({
   onOpenMenuChange,
   onCreateThread,
   onThreadToggle,
-  messageRef
+  messageRef: messageRefCallback
 }: MessageItemProps) {
   const thread = message.thread
   const [isEmojiOpen, setIsEmojiOpen] = useState(false)
   const [isReactionTooltipOpen, setIsReactionTooltipOpen] = useState(false)
   const [isThreadTooltipOpen, setIsThreadTooltipOpen] = useState(false)
+  const messageRef = useRef<HTMLDivElement | null>(null)
+  const messagePositionRef = useRef<number | null>(null)
+
+  // Store the message's position before any thread interaction
+  const captureMessagePosition = () => {
+    if (messageRef.current) {
+      const rect = messageRef.current.getBoundingClientRect()
+      messagePositionRef.current = rect.top
+    }
+  }
+
+  // Adjust scroll position to maintain message position
+  const adjustScrollPosition = () => {
+    if (messageRef.current && messagePositionRef.current !== null) {
+      const newRect = messageRef.current.getBoundingClientRect()
+      const delta = newRect.top - messagePositionRef.current
+      if (delta !== 0) {
+        window.scrollBy({ top: delta })
+      }
+      messagePositionRef.current = null
+    }
+  }
+
+  // Handle thread interactions
+  const handleThreadInteraction = () => {
+    captureMessagePosition()
+    if (thread && thread.reply_count > 0) {
+      onThreadToggle(thread.id, newlyCreatedThreadIds.has(thread.id))
+    } else {
+      onCreateThread(message.id, message.channel_id)
+    }
+    // Use requestAnimationFrame to ensure the DOM has updated
+    requestAnimationFrame(adjustScrollPosition)
+  }
+
+  // Handle both refs
+  const handleRef = (el: HTMLDivElement | null) => {
+    messageRef.current = el
+    if (messageRefCallback) {
+      messageRefCallback(el)
+    }
+  }
 
   const handleReactionClick = async (emoji: string) => {
     try {
@@ -151,7 +193,7 @@ export function MessageItem({
 
   return (
     <div
-      ref={messageRef}
+      ref={handleRef}
       className={cn(
         "relative transition-colors duration-200",
         isHighlighted && "bg-yellow-100 rounded-lg",
@@ -239,26 +281,27 @@ export function MessageItem({
                 </Tooltip>
               </div>
 
-              {(!thread || thread.reply_count === 0) && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
-                        (openMenuId === message.id || isThreadTooltipOpen) && "bg-zinc-200"
-                      )}
-                      onClick={() => onCreateThread(message.id, message.channel_id)}
-                    >
-                      <Reply className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={4} onPointerEnter={() => setIsThreadTooltipOpen(true)} onPointerLeave={() => setIsThreadTooltipOpen(false)}>
-                    Start thread
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
+                      (openMenuId === message.id || isThreadTooltipOpen) && "bg-zinc-200"
+                    )}
+                    onClick={handleThreadInteraction}
+                  >
+                    <Reply className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={4} onPointerEnter={() => setIsThreadTooltipOpen(true)} onPointerLeave={() => setIsThreadTooltipOpen(false)}>
+                  {thread && thread.reply_count > 0
+                    ? (expandedThreadId === thread.id ? 'Collapse thread' : 'Expand thread')
+                    : 'Start thread'
+                  }
+                </TooltipContent>
+              </Tooltip>
             </div>
           </TooltipProvider>
         </div>
