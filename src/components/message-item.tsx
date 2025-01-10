@@ -126,6 +126,8 @@ export function MessageItem({
 }: MessageItemProps) {
   const thread = message.thread
   const [isEmojiOpen, setIsEmojiOpen] = useState(false)
+  const [isReactionTooltipOpen, setIsReactionTooltipOpen] = useState(false)
+  const [isThreadTooltipOpen, setIsThreadTooltipOpen] = useState(false)
 
   const handleReactionClick = async (emoji: string) => {
     try {
@@ -153,7 +155,7 @@ export function MessageItem({
       className={cn(
         "relative transition-colors duration-200",
         isHighlighted && "bg-yellow-100 rounded-lg",
-        (openMenuId === message.id || (thread && expandedThreadId === thread.id && !newlyCreatedThreadIds.has(thread.id))) ? "bg-zinc-100" : "hover:bg-zinc-100",
+        (openMenuId === message.id || isEmojiOpen || isReactionTooltipOpen || isThreadTooltipOpen || (thread && expandedThreadId === thread.id && !newlyCreatedThreadIds.has(thread.id))) ? "bg-zinc-100" : "hover:bg-zinc-100",
         "rounded-lg group"
       )}
     >
@@ -184,7 +186,7 @@ export function MessageItem({
         </div>
         <div className={cn(
           "absolute right-1 top-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
-          openMenuId === message.id && "opacity-100"
+          (openMenuId === message.id || isEmojiOpen || isReactionTooltipOpen || isThreadTooltipOpen) && "opacity-100"
         )}>
           <TooltipProvider delayDuration={150}>
             <div className="flex gap-0.5">
@@ -199,7 +201,7 @@ export function MessageItem({
                             size="icon"
                             className={cn(
                               "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
-                              openMenuId === message.id && "bg-zinc-200"
+                              (openMenuId === message.id || isEmojiOpen || isReactionTooltipOpen) && "bg-zinc-200"
                             )}
                           >
                             <SmilePlus className="h-4 w-4" />
@@ -231,7 +233,7 @@ export function MessageItem({
                       </div>
                     </PopoverContent>
                   </Popover>
-                  <TooltipContent side="bottom" sideOffset={4}>
+                  <TooltipContent side="bottom" sideOffset={4} onPointerEnter={() => setIsReactionTooltipOpen(true)} onPointerLeave={() => setIsReactionTooltipOpen(false)}>
                     Add reaction
                   </TooltipContent>
                 </Tooltip>
@@ -245,14 +247,14 @@ export function MessageItem({
                       size="icon"
                       className={cn(
                         "h-7 w-7 hover:bg-zinc-200 focus-visible:ring-0 cursor-pointer bg-zinc-50/80 shadow-sm",
-                        openMenuId === message.id && "bg-zinc-200"
+                        (openMenuId === message.id || isThreadTooltipOpen) && "bg-zinc-200"
                       )}
                       onClick={() => onCreateThread(message.id, message.channel_id)}
                     >
                       <Reply className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={4}>
+                  <TooltipContent side="bottom" sideOffset={4} onPointerEnter={() => setIsThreadTooltipOpen(true)} onPointerLeave={() => setIsThreadTooltipOpen(false)}>
                     Start thread
                   </TooltipContent>
                 </Tooltip>
