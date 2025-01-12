@@ -1,15 +1,27 @@
+import { useEffect } from 'react'
 import { redirect } from 'next/navigation'
-import { createServerComponent } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { useStore } from '@/lib/store'
+import { UserMetadata } from '@supabase/supabase-js'
 
 export default async function HomePage() {
-  const supabase = createServerComponent()
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
 
-  const { data: { user } } = await supabase.auth.getUser()
+    const setUserData = useStore(state => state.setUserData)
 
-  // Redirect based on auth status
-  if (user) {
-    redirect('/chat')
-  } else {
-    redirect('/login')
-  }
+    useEffect(() => {
+        if (user) {
+            setUserData(user)
+        }
+    }, [user])
+
+    // Redirect based on auth status
+    if (user) {
+        redirect('/chat')
+    } else {
+        redirect('/login')
+    }
 }

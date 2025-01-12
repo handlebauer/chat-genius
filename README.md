@@ -14,6 +14,7 @@ A real-time messaging platform designed for team collaboration, featuring secure
 ## Features
 
 ### Real-time Communication
+
 - Instant messaging with real-time updates
 - Channel-based communication with public channels
 - Direct messaging with online presence indicators
@@ -23,6 +24,7 @@ A real-time messaging platform designed for team collaboration, featuring secure
 - Emoji reactions with real-time updates and reaction counts
 
 ### Rich Message Editor
+
 - Rich text formatting (bold, italic, strikethrough)
 - File attachments support with drag & drop
 - Multiple file upload with preview
@@ -30,6 +32,7 @@ A real-time messaging platform designed for team collaboration, featuring secure
 - Keyboard shortcuts for sending messages (Enter) and formatting
 
 ### Modern UI/UX
+
 - Clean, responsive interface with Tailwind CSS
 - Real-time typing indicators
 - Online presence indicators
@@ -39,24 +42,27 @@ A real-time messaging platform designed for team collaboration, featuring secure
 - File preview for images and documents
 
 ### File Sharing
+
 - Drag and drop file uploads
 - Image previews in chat
 - Support for multiple file types:
-  - Images (JPEG, PNG, GIF)
-  - Documents (PDF, DOCX, XLSX)
-  - Text files
-  - Archives (ZIP)
-  - Videos (MP4, QuickTime)
+    - Images (JPEG, PNG, GIF)
+    - Documents (PDF, DOCX, XLSX)
+    - Text files
+    - Archives (ZIP)
+    - Videos (MP4, QuickTime)
 
 ## Getting Started
 
 1. Clone the repository
 2. Install dependencies:
+
 ```bash
 bun install
 ```
 
 3. Set up your environment variables:
+
 ```bash
 cp .env.example .env.local
 ```
@@ -64,6 +70,7 @@ cp .env.example .env.local
 4. Update `.env.local` with your Supabase credentials
 
 5. Run the development server:
+
 ```bash
 bun dev
 ```
@@ -73,6 +80,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Development
 
 This project uses:
+
 - [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) with [Geist](https://vercel.com/font)
 - TypeScript for type safety
 - ESLint for code quality

@@ -10,40 +10,40 @@ import { useEffect, useRef } from 'react'
 const ENABLE_SKELETON_LOADING = false
 
 interface MessagesSectionProps {
-  messages: any[]
-  loading?: boolean
+    messages: any[]
+    loading?: boolean
 }
 
 export function MessagesSection({ messages, loading }: MessagesSectionProps) {
-  const loadingEndRef = useRef<HTMLDivElement>(null)
+    const loadingEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    // Scroll to bottom when loading state changes
-    if (!loading) {
-      loadingEndRef.current?.scrollIntoView()
-    }
-  }, [loading])
+    useEffect(() => {
+        // Scroll to bottom when loading state changes
+        if (!loading) {
+            loadingEndRef.current?.scrollIntoView()
+        }
+    }, [loading])
 
-  if (loading && ENABLE_SKELETON_LOADING) {
-    return (
-      <div className="flex-1 p-4 space-y-4">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-start space-x-4">
-            <Skeleton className="w-10 h-10 rounded-full" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-[120px]" />
-              <Skeleton className="h-4 w-full max-w-[600px]" />
+    if (loading && ENABLE_SKELETON_LOADING) {
+        return (
+            <div className="flex-1 p-4 space-y-4">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-start space-x-4">
+                        <Skeleton className="w-10 h-10 rounded-full" />
+                        <div className="space-y-2 flex-1">
+                            <Skeleton className="h-4 w-[120px]" />
+                            <Skeleton className="h-4 w-full max-w-[600px]" />
+                        </div>
+                    </div>
+                ))}
+                <div ref={loadingEndRef} />
             </div>
-          </div>
-        ))}
-        <div ref={loadingEndRef} />
-      </div>
-    )
-  }
+        )
+    }
 
-  return (
-    <ErrorBoundary FallbackComponent={MessagesErrorBoundary}>
-      <MessageList messages={messages} />
-    </ErrorBoundary>
-  )
+    return (
+        <ErrorBoundary FallbackComponent={MessagesErrorBoundary}>
+            <MessageList messages={messages} />
+        </ErrorBoundary>
+    )
 }

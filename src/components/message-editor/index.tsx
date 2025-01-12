@@ -12,113 +12,140 @@ import type { Database } from '@/lib/supabase/types'
 type Channel = Database['public']['Tables']['channels']['Row']
 
 interface MessageEditorProps {
-  onSend: (content: string, attachments?: UploadedFile[]) => void
-  channel?: Channel
-  userId: string
-  dmParticipant?: { name: string; email: string } | null
+    onSend: (content: string, attachments?: UploadedFile[]) => void
+    channel?: Channel
+    userId: string
+    dmParticipant?: { name: string; email: string } | null
 }
 
-export function MessageEditor({ onSend, channel, userId, dmParticipant }: MessageEditorProps) {
-  const editorRef = useRef(null)
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+export function MessageEditor({
+    onSend,
+    channel,
+    userId,
+    dmParticipant,
+}: MessageEditorProps) {
+    const editorRef = useRef(null)
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+    const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
 
-  const getPlaceholder = () => {
-    if (!channel?.name) return ''
-    if (channel.channel_type === 'direct_message') {
-      return `Message ${dmParticipant?.name || dmParticipant?.email || 'user'}`
+    const getPlaceholder = () => {
+        if (!channel?.name) return ''
+        if (channel.channel_type === 'direct_message') {
+            return `Message ${dmParticipant?.name || dmParticipant?.email || 'user'}`
+        }
+        return `Message #${channel.name.toLowerCase()}`
     }
-    return `Message #${channel.name.toLowerCase()}`
-  }
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Placeholder.configure({
-        placeholder: getPlaceholder(),
-        emptyEditorClass: 'is-editor-empty',
-      }),
-    ],
-    content: '',
-    autofocus: true,
-    editorProps: {
-      attributes: {
-        class: 'w-full text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto min-h-[24px] max-h-[200px]',
-      },
-    },
-    immediatelyRender: false,
-  }, [channel?.name, dmParticipant])
+    const editor = useEditor(
+        {
+            extensions: [
+                StarterKit,
+                Placeholder.configure({
+                    placeholder: getPlaceholder(),
+                    emptyEditorClass: 'is-editor-empty',
+                }),
+            ],
+            content: '',
+            autofocus: true,
+            editorProps: {
+                attributes: {
+                    class: 'w-full text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto min-h-[24px] max-h-[200px]',
+                },
+            },
+            immediatelyRender: false,
+        },
+        [channel?.name, dmParticipant],
+    )
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      if (!editor?.isEmpty || uploadedFiles.length > 0) {
-        const content = editor?.getHTML() || ''
-        onSend(content, uploadedFiles)
-        editor?.commands.clearContent()
-        setSelectedFiles([])
-        setUploadedFiles([])
-      }
-    }
-  }, [editor, onSend, uploadedFiles])
+    const handleKeyDown = useCallback(
+        (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                if (!editor?.isEmpty || uploadedFiles.length > 0) {
+                    const content = editor?.getHTML() || ''
+                    onSend(content, uploadedFiles)
+                    editor?.commands.clearContent()
+                    setSelectedFiles([])
+                    setUploadedFiles([])
+                }
+            }
+        },
+        [editor, onSend, uploadedFiles],
+    )
 
-  const handleSend = useCallback(() => {
-    if ((!editor?.isEmpty || uploadedFiles.length > 0)) {
-      const content = editor?.getHTML() || ''
-      console.log('📨 Sending message:', { content, attachments: uploadedFiles })
-      onSend(content, uploadedFiles)
-      editor?.commands.clearContent()
-      setSelectedFiles([])
-      setUploadedFiles([])
-    }
-  }, [editor, onSend, uploadedFiles])
+    const handleSend = useCallback(() => {
+        if (!editor?.isEmpty || uploadedFiles.length > 0) {
+            const content = editor?.getHTML() || ''
+            console.log('📨 Sending message:', {
+                content,
+                attachments: uploadedFiles,
+            })
+            onSend(content, uploadedFiles)
+            editor?.commands.clearContent()
+            setSelectedFiles([])
+            setUploadedFiles([])
+        }
+    }, [editor, onSend, uploadedFiles])
 
-  const handleContainerClick = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    editor?.commands.focus()
-  }, [editor])
+    const handleContainerClick = useCallback(
+        (e: React.MouseEvent) => {
+            if ((e.target as HTMLElement).closest('button')) return
+            editor?.commands.focus()
+        },
+        [editor],
+    )
 
-  const handleFilesSelected = useCallback((files: File[]) => {
-    console.log('📁 Files added to selection:', files.map(f => f.name))
-    setSelectedFiles(prev => [...prev, ...files])
-  }, [])
+    const handleFilesSelected = useCallback((files: File[]) => {
+        console.log(
+            '📁 Files added to selection:',
+            files.map(f => f.name),
+        )
+        setSelectedFiles(prev => [...prev, ...files])
+    }, [])
 
-  const handleFileUploadComplete = useCallback((files: UploadedFile[]) => {
-    console.log('💾 Files ready for sending:', files)
-    setUploadedFiles(prev => [...prev, ...files])
-  }, [])
+    const handleFileUploadComplete = useCallback((files: UploadedFile[]) => {
+        console.log('💾 Files ready for sending:', files)
+        setUploadedFiles(prev => [...prev, ...files])
+    }, [])
 
-  const handleFileRemove = useCallback((fileId: string) => {
-    console.log('🗑️ Removing file:', fileId)
-    setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
-  }, [])
+    const handleFileRemove = useCallback((fileId: string) => {
+        console.log('🗑️ Removing file:', fileId)
+        setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
+    }, [])
 
-  if (!channel?.name) return null
+    if (!channel?.name) return null
 
-  return (
-    <div className="p-4 pt-0">
-      <div
-        className="relative rounded-lg border border-input bg-background/80 transition-all duration-200 hover:bg-background focus-within:bg-background focus-within:border-zinc-400 focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.2)] group cursor-text"
-        onClick={handleContainerClick}
-      >
-        <div className="flex flex-col">
-          <ToolbarButtons editor={editor} />
-          <div className="px-3 py-2">
-            <div className="flex-1" ref={editorRef} onKeyDown={handleKeyDown}>
-              <EditorContent editor={editor} />
+    return (
+        <div className="p-4 pt-0">
+            <div
+                className="relative rounded-lg border border-input bg-background/80 transition-all duration-200 hover:bg-background focus-within:bg-background focus-within:border-zinc-400 focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.2)] group cursor-text"
+                onClick={handleContainerClick}
+            >
+                <div className="flex flex-col">
+                    <ToolbarButtons editor={editor} />
+                    <div className="px-3 py-2">
+                        <div
+                            className="flex-1"
+                            ref={editorRef}
+                            onKeyDown={handleKeyDown}
+                        >
+                            <EditorContent editor={editor} />
+                        </div>
+                    </div>
+                    <FilePreview
+                        files={uploadedFiles}
+                        onRemove={handleFileRemove}
+                    />
+                    <ActionButtons
+                        editor={editor}
+                        onSend={handleSend}
+                        userId={userId}
+                        onFilesSelected={handleFilesSelected}
+                        onUploadComplete={handleFileUploadComplete}
+                        onFileRemove={handleFileRemove}
+                    />
+                </div>
             </div>
-          </div>
-          <FilePreview files={uploadedFiles} onRemove={handleFileRemove} />
-          <ActionButtons
-            editor={editor}
-            onSend={handleSend}
-            userId={userId}
-            onFilesSelected={handleFilesSelected}
-            onUploadComplete={handleFileUploadComplete}
-            onFileRemove={handleFileRemove}
-          />
         </div>
-      </div>
-    </div>
-  )
+    )
 }
