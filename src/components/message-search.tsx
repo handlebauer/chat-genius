@@ -51,33 +51,37 @@ function useKeyboardNavigation<T>({
     }, [items])
 
     // Handle keyboard navigation
-    useEvent(window, 'keydown', (e: KeyboardEvent) => {
-        if (!isVisible || !items?.length) return
+    useEvent(
+        typeof window !== 'undefined' ? window : null,
+        'keydown',
+        (e: KeyboardEvent) => {
+            if (!isVisible || !items?.length) return
 
-        switch (e.key) {
-            case 'ArrowDown':
-                e.preventDefault()
-                setSelectedIndex(prev =>
-                    prev < items.length - 1 ? prev + 1 : prev,
-                )
-                break
-            case 'ArrowUp':
-                e.preventDefault()
-                setSelectedIndex(prev => (prev > -1 ? prev - 1 : prev))
-                break
-            case 'Enter':
-                e.preventDefault()
-                if (selectedIndex >= 0 && items[selectedIndex]) {
-                    onSelect(items[selectedIndex])
-                }
-                break
-            case 'Escape':
-                e.preventDefault()
-                onClose()
-                setSelectedIndex(-1)
-                break
-        }
-    })
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault()
+                    setSelectedIndex(prev =>
+                        prev < items.length - 1 ? prev + 1 : prev,
+                    )
+                    break
+                case 'ArrowUp':
+                    e.preventDefault()
+                    setSelectedIndex(prev => (prev > -1 ? prev - 1 : prev))
+                    break
+                case 'Enter':
+                    e.preventDefault()
+                    if (selectedIndex >= 0 && items[selectedIndex]) {
+                        onSelect(items[selectedIndex])
+                    }
+                    break
+                case 'Escape':
+                    e.preventDefault()
+                    onClose()
+                    setSelectedIndex(-1)
+                    break
+            }
+        },
+    )
 
     return {
         selectedIndex,
@@ -118,21 +122,29 @@ export function MessageSearch() {
     })
 
     // Cmd+K shortcut listener
-    useEvent(window, 'keydown', (e: KeyboardEvent) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-            e.preventDefault()
-            inputRef.current?.focus()
-            setShowResults(true)
-        }
-    })
+    useEvent(
+        typeof window !== 'undefined' ? window : null,
+        'keydown',
+        (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault()
+                inputRef.current?.focus()
+                setShowResults(true)
+            }
+        },
+    )
 
     // Handle click outside
-    useEvent(window, 'click', (e: MouseEvent) => {
-        const target = e.target as HTMLElement
-        if (!target.closest('.search-container')) {
-            handleClose()
-        }
-    })
+    useEvent(
+        typeof window !== 'undefined' ? window : null,
+        'click',
+        (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            if (!target.closest('.search-container')) {
+                handleClose()
+            }
+        },
+    )
 
     // Debounce the search query
     const [debouncedQuery] = useDebounce(query, 300)
