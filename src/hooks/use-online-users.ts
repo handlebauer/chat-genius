@@ -4,6 +4,7 @@ import { useEffect, useCallback } from 'react'
 import { useUserData } from '@/hooks/use-user-data'
 import { useIdleDetection } from '@/hooks/use-idle-detection'
 import { useStore } from '@/lib/store'
+import { useShallow } from 'zustand/react/shallow'
 import type { OnlineUser } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 
@@ -25,7 +26,8 @@ type RealtimePresenceState = Record<string, PresenceState[]>
 
 export function useOnlineUsers({ userId }: OnlineUsersProps) {
     const supabase = createClient()
-    const { onlineUsers, setOnlineUsers } = useStore()
+    const onlineUsers = useStore(useShallow(state => state.onlineUsers))
+    const setOnlineUsers = useStore(state => state.setOnlineUsers)
     const user = useUserData(userId)
     const { isIdle } = useIdleDetection()
 

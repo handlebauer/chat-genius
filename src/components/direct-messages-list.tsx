@@ -23,7 +23,7 @@ export function DirectMessagesList({ userId }: { userId: string }) {
     const router = useRouter()
     const { isIdle } = useIdleDetection()
     const { channelId } = useParams() as { channelId: string }
-    const { getCurrentChannel } = useStore()
+    const getCurrentChannel = useStore(state => state.getCurrentChannel)
     const currentChannel = getCurrentChannel()
 
     // Memoize filtered users to prevent unnecessary recalculations

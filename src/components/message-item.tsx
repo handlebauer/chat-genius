@@ -130,6 +130,8 @@ export function MessageItem({
     const messageRef = useRef<HTMLDivElement | null>(null)
     const messagePositionRef = useRef<number | null>(null)
 
+    const toggleReactionFn = useStore(state => state.toggleReaction)
+
     // Store the message's position before any thread interaction
     const captureMessagePosition = () => {
         if (messageRef.current) {
@@ -174,14 +176,13 @@ export function MessageItem({
         try {
             setIsEmojiOpen(false)
             // Use the store's toggleReaction for optimistic update
-            useStore
-                .getState()
-                .toggleReaction(
-                    message.id,
-                    message.channel_id,
-                    emoji,
-                    currentUser.id,
-                )
+
+            toggleReactionFn(
+                message.id,
+                message.channel_id,
+                emoji,
+                currentUser.id,
+            )
 
             // Make the API call
             const result = await toggleReaction(message.id, emoji)

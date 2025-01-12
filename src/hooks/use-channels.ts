@@ -1,15 +1,19 @@
 import { useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
+import { useShallow } from 'zustand/react/shallow'
 
 export function useChannels() {
     const supabase = createClient()
-    const { channels, setChannels, activeChannelId, setActiveChannelId } =
-        useStore()
+
+    const channels = useStore(useShallow(state => state.channels))
+    const setChannels = useStore(state => state.setChannels)
+    const activeChannelId = useStore(state => state.activeChannelId)
+    const setActiveChannelId = useStore(state => state.setActiveChannelId)
 
     useEffect(() => {
         async function loadChannels() {
-            const { data: channelsData, error } = await supabase
+            const { data: channels, error } = await supabase
                 .from('channels')
                 .select('*')
                 .order('created_at')
@@ -19,11 +23,13 @@ export function useChannels() {
                 return
             }
 
-            if (channelsData) {
-                setChannels(channelsData)
-                // Set default channel if none is selected
-                if (!activeChannelId && channelsData.length > 0) {
-                    setActiveChannelId(channelsData[0].id)
+            if (channels) {
+                setChannels(channels)
+                const noSelectedChannel =
+                    !activeChannelId && channels.length > 0
+                if (noSelectedChannel) {
+                    const [channel] = channels
+                    setActiveChannelId(channel.id)
                 }
             }
         }
@@ -40,10 +46,7 @@ export function useChannels() {
                     schema: 'public',
                     table: 'channels',
                 },
-                () => {
-                    // Reload channels when there are changes
-                    loadChannels()
-                },
+                () => loadChannels(),
             )
             .subscribe()
 

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { Database } from '@/lib/supabase/types'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { useStore } from '@/lib/store'
+import { useShallow } from 'zustand/react/shallow'
 import { createClient } from '@/lib/supabase/client'
 
 type MessageRow = {
@@ -56,8 +57,11 @@ function isMessageRow(obj: any): obj is MessageRow {
 
 export function useRealTimeMessages(channelId: string | undefined) {
     const supabase = createClient()
-    const { messages, setMessages, setMessagesLoading, addMessage, userData } =
-        useStore()
+    const messages = useStore(useShallow(state => state.messages))
+    const setMessages = useStore(state => state.setMessages)
+    const setMessagesLoading = useStore(state => state.setMessagesLoading)
+    const addMessage = useStore(state => state.addMessage)
+    const userData = useStore(state => state.userData)
 
     // Load initial messages
     useEffect(() => {

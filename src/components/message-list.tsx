@@ -38,7 +38,9 @@ interface MessageListProps {
 export function MessageList({ messages }: MessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
-    const { selectedMessageId, selectMessage, userData } = useStore()
+    const selectedMessageId = useStore(state => state.selectedMessageId)
+    const selectMessage = useStore(state => state.selectMessage)
+    const userData = useStore(state => state.userData)
     const [isHighlighted, setIsHighlighted] = useState(false)
     const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
     const [openMenuId, setOpenMenuId] = useState<string | null>(null)

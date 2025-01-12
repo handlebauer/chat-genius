@@ -39,7 +39,7 @@ export const signInWithGoogle = async () => {
 }
 
 export const signInWithGithub = async () => {
-    const supabase = createClientComponent()
+    const supabase = createClient()
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
@@ -56,7 +56,7 @@ export const signInWithGithub = async () => {
 }
 
 export const signOut = async () => {
-    const supabase = createClientComponent()
+    const supabase = createClient()
 
     const { error } = await supabase.auth.signOut()
 
@@ -66,7 +66,7 @@ export const signOut = async () => {
 }
 
 export const getCurrentUser = async () => {
-    const supabase = createClientComponent()
+    const supabase = createClient()
 
     const {
         data: { user },

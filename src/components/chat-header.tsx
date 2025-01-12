@@ -20,7 +20,7 @@ interface ChatHeaderProps {
 }
 
 export function ChatHeader({ channel, user }: ChatHeaderProps) {
-    const { getDMParticipant } = useStore()
+    const getDMParticipant = useStore(state => state.getDMParticipant)
     const isDM = channel?.channel_type === 'direct_message'
     const dmParticipant = getDMParticipant(channel?.id ?? null, user.id)
 

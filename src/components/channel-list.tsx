@@ -140,12 +140,15 @@ function ChannelListHeader() {
 }
 
 export function ChannelList() {
-    const { channels } = useChannels()
-    const router = useRouter()
     const { channelId } = useParams() as { channelId: string }
-    const { userData } = useStore()
+    const router = useRouter()
+
+    const { channels } = useChannels()
+    const userData = useStore(state => state.userData)
+
     const { deleteChannel, canDeleteChannel, createChannel } =
         useChannelManagement(userData?.id || '')
+
     const [name, setName] = useState('')
 
     if (!userData) {

@@ -3,7 +3,6 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { User } from '@supabase/supabase-js'
-import { ChannelList } from './channel-list'
 import { MessageEditor } from './message-editor'
 import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
 import { useUserData } from '@/hooks/use-user-data'
@@ -13,6 +12,7 @@ import { useStore } from '@/lib/store'
 import { useParams } from 'next/navigation'
 import { MessagesSection } from './messages-section'
 import { ChatHeader } from './chat-header'
+import { ChannelList } from './channel-list'
 
 import type { Database } from '@/lib/supabase/types'
 import { useEffect } from 'react'
@@ -25,12 +25,12 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ user }: ChatInterfaceProps) {
     const { channelId } = useParams() as { channelId: string }
-    const {
-        getCurrentChannel,
-        setActiveChannelId,
-        channelsLoading,
-        getDMParticipant,
-    } = useStore()
+
+    const getCurrentChannel = useStore(state => state.getCurrentChannel)
+    const setActiveChannelId = useStore(state => state.setActiveChannelId)
+    const channelsLoading = useStore(state => state.channelsLoading)
+    const getDMParticipant = useStore(state => state.getDMParticipant)
+
     const currentChannel = getCurrentChannel()
     const userData = useUserData(user.id) as UserData | null
     const isDM = currentChannel?.channel_type === 'direct_message'

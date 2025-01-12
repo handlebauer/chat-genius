@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 
 export function useUserData(userId: string) {
     const supabase = createClient()
-    const { userData, setUserData } = useStore()
+    const userData = useStore(state => state.userData)
+    const setUserData = useStore(state => state.setUserData)
 
     useEffect(() => {
         async function loadUserData() {

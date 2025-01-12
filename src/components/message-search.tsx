@@ -96,17 +96,18 @@ export function MessageSearch() {
     const [showResults, setShowResults] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const router = useRouter()
-    const { selectMessage, setActiveChannelId } = useStore()
+    const selectMessage = useStore(state => state.selectMessage)
+    const setActiveChannelId = useStore(state => state.setActiveChannelId)
 
     const handleMessageSelect = async (
         message: SearchResult['messages'][0],
     ) => {
         setActiveChannelId(message.channel_id)
-        router.push(`/chat/${message.channel_id}`)
         selectMessage(message.id)
         setShowResults(false)
         setQuery('')
         inputRef.current?.blur()
+        router.push(`/chat/${message.channel_id}`)
     }
 
     const handleClose = () => {

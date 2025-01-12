@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation'
 
 export function useChannelManagement(userId: string) {
     const router = useRouter()
-    const { addChannel, removeChannel, canDeleteChannel } = useStore()
+    const addChannel = useStore(state => state.addChannel)
+    const removeChannel = useStore(state => state.removeChannel)
+    const canDeleteChannel = useStore(state => state.canDeleteChannel)
 
     const handleCreateChannel = async (name: string) => {
         try {
