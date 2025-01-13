@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 type Params = Promise<{ channelId: string }>
 
-export const ChatChannelPage = async (props: { params: Params }) => {
+const ChatChannelPage = async (props: { params: Params }) => {
     const params = await props.params
     const { channelId } = params
     const supabase = await createClient()
