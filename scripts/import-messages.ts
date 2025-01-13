@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+
+import { config } from '@/config'
 import { $ } from 'bun'
 
 interface SlackDumpUser {
@@ -197,7 +199,37 @@ async function dumpChannels() {
     return { channels: mappedChannels, channelsById: mappedChannelsById }
 }
 
+async function confirmProductionSeed() {
+    if (config.NODE_ENV !== 'production') return true
+
+    console.log(
+        '\n⚠️  WARNING: You are about to seed data in PRODUCTION environment!',
+    )
+    console.log('Press Enter to continue or Ctrl+C to abort...')
+
+    try {
+        await new Promise(resolve => process.stdin.once('data', resolve))
+        return true
+    } catch (error) {
+        return false
+    }
+}
+
 async function dump() {
+    if (config.NODE_ENV !== 'production') {
+        console.log('This script can only be run in production environment')
+        process.exit(0)
+    }
+
+    console.log('Starting data seeding...')
+    console.log('Environment:', config.NODE_ENV)
+
+    const shouldProceed = await confirmProductionSeed()
+    if (!shouldProceed) {
+        console.log('Seeding aborted.')
+        process.exit(0)
+    }
+
     const inputChannels = Bun.argv.slice(2)
 
     if (inputChannels.length === 0) {

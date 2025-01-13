@@ -10,8 +10,9 @@
         "format": "prettier --write .",
         "db:typegen": "bunx supabase gen types typescript --linked > src/lib/supabase/types.ts",
         "db:seed": "bun scripts/import-messages.ts && bun scripts/seed.ts",
-        "db:init": "yes | bunx supabase db reset --linked && bun run db:typegen && bun run db:seed",
-        "db:migrate": "bunx supabase db migrate && bun run db:typegen"
+        "db:reset": "yes | bunx supabase db reset --linked",
+        "db:migrate": "bunx supabase db migrate && bun run db:typegen",
+        "db:init": "bun run db:reset && bun run db:typegen && bun run db:seed"
     },
     "dependencies": {
         "@radix-ui/react-accordion": "^1.2.2",
@@ -27,7 +28,6 @@
         "@radix-ui/react-slot": "^1.1.1",
         "@radix-ui/react-tooltip": "^1.1.6",
         "@react-hook/event": "^1.2.6",
-        "@supabase/auth-helpers-nextjs": "^0.10.0",
         "@supabase/ssr": "^0.5.2",
         "@supabase/supabase-js": "^2.47.10",
         "@tiptap/extension-placeholder": "^2.11.0",
@@ -45,6 +45,7 @@
         "lodash": "^4.17.21",
         "lucide-react": "^0.469.0",
         "next": "15.1.3",
+        "openai": "^4.78.1",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "react-error-boundary": "^5.0.0",

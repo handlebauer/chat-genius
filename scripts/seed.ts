@@ -1,7 +1,10 @@
 #!/usr/bin/env bun
+
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../src/lib/supabase/types'
 import { readdir } from 'fs/promises'
+import { config } from '../src/config'
+import { seedDev } from './seed-dev'
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -178,18 +181,18 @@ async function seedChannels() {
 }
 
 async function seed() {
-    console.log('Starting data seeding...')
-
     // Create system user first
+    if (config.NODE_ENV === 'development') {
+        // Only seed test channel in development
+        await seedDev()
+        console.log('Development seeding completed!')
+        return
+    }
+
+    // In other environments, seed everything
     await createSystemUser()
-
-    // Then seed regular users
     await seedUsers()
-
-    // Then seed the test channel
     await seedTestChannel()
-
-    // Finally seed the actual channels and their messages
     await seedChannels()
 
     console.log('Data seeding completed!')
