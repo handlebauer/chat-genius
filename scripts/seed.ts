@@ -53,7 +53,7 @@ async function seedUsers() {
             const { data: user, error } = await supabase
                 .from('users')
                 .insert({
-                    email: `${slackUser.name}@gauntletai.com`, // Placeholder email
+                    email: slackUser.email,
                     name: slackUser.realName,
                     avatar_url: slackUser.avatar,
                 })
