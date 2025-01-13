@@ -5,16 +5,22 @@ import { MessagesErrorBoundary } from './messages-error-boundary'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useEffect, useRef } from 'react'
+import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
+import { UserData } from '@/lib/store'
 
 // TODO: Set this to true to enable skeleton loading UI for messages
 const ENABLE_SKELETON_LOADING = false
 
 interface MessagesSectionProps {
-    messages: any[]
-    loading?: boolean
+    currentChannelId: string
+    userData: UserData
 }
 
-export function MessagesSection({ messages, loading }: MessagesSectionProps) {
+export function MessagesSection({
+    currentChannelId,
+    userData,
+}: MessagesSectionProps) {
+    const { messages, loading } = useRealTimeMessages(currentChannelId)
     const loadingEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -43,7 +49,7 @@ export function MessagesSection({ messages, loading }: MessagesSectionProps) {
 
     return (
         <ErrorBoundary FallbackComponent={MessagesErrorBoundary}>
-            <MessageList messages={messages} />
+            <MessageList messages={messages} userData={userData} />
         </ErrorBoundary>
     )
 }

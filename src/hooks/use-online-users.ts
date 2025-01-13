@@ -28,7 +28,7 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
     const supabase = createClient()
     const onlineUsers = useStore(useShallow(state => state.onlineUsers))
     const setOnlineUsers = useStore(state => state.setOnlineUsers)
-    const user = useUserData(userId)
+    const { userData } = useUserData(userId)
     const { isIdle } = useIdleDetection()
 
     // Memoize the presence sync handler with proper types
@@ -52,12 +52,12 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
     )
 
     useEffect(() => {
-        if (!user) return
+        if (!userData) return
 
         const channel = supabase.channel('online-users', {
             config: {
                 presence: {
-                    key: user.id,
+                    key: userData.id,
                 },
             },
         })
@@ -69,9 +69,9 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
         channel.subscribe(async status => {
             if (status === 'SUBSCRIBED') {
                 const presenceData: PresenceState = {
-                    user_id: user.id,
-                    email: user.email,
-                    name: user.name || null,
+                    user_id: userData.id,
+                    email: userData.email,
+                    name: userData.name || null,
                     last_seen: new Date().toISOString(),
                     status: isIdle ? 'away' : 'online',
                 }
@@ -82,7 +82,7 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
         return () => {
             channel.unsubscribe()
         }
-    }, [user, supabase, handlePresenceSync, isIdle])
+    }, [userData, supabase, handlePresenceSync, isIdle])
 
     return { onlineUsers }
 }

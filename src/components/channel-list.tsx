@@ -1,7 +1,14 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Hash, ChevronDown, Plus, Trash2 } from 'lucide-react'
+import {
+    Hash,
+    ChevronDown,
+    Plus,
+    Trash2,
+    LogOut,
+    MoreVertical,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
     Collapsible,
@@ -28,13 +35,19 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useChannels } from '@/hooks/use-channels'
 import { useRouter, useParams } from 'next/navigation'
 import { useChannelManagement } from '@/hooks/use-channel-management'
-import { useStore } from '@/lib/store'
-import { useState } from 'react'
+import { UserData, useStore } from '@/lib/store'
+import { useCallback, useMemo, useState } from 'react'
+import { useChannels } from '@/hooks/use-channels'
 import type { Database } from '@/lib/supabase/types'
 
 type Channel = Database['public']['Tables']['channels']['Row']
@@ -83,14 +96,14 @@ function ChannelButton({
     channel,
     isActive,
     onClick,
-    onDelete,
-    showDelete,
+    onJoin,
+    isMember,
 }: {
     channel: Channel
     isActive: boolean
     onClick: () => void
-    onDelete?: () => Promise<void>
-    showDelete?: boolean
+    onJoin?: () => Promise<void>
+    isMember: boolean
 }) {
     return (
         <div className="group relative">
@@ -98,19 +111,40 @@ function ChannelButton({
                 variant="ghost"
                 onClick={onClick}
                 className={cn(
-                    'flex items-center gap-2 justify-start w-full hover:bg-zinc-200 group-hover:bg-zinc-200 py-1 h-auto',
-                    isActive && 'bg-zinc-200',
+                    'flex items-center gap-2 justify-start w-full py-1 h-auto transition-colors',
+                    // Base styles for joined/unjoined
+                    isMember && 'font-semibold text-zinc-900',
+                    !isMember && 'text-zinc-400',
+                    // Background styles based on state
+                    isActive && 'bg-zinc-200 hover:bg-zinc-200',
+                    !isActive && isMember && 'bg-white/50 hover:bg-zinc-100',
+                    !isActive &&
+                        !isMember &&
+                        'bg-zinc-50/30 hover:bg-zinc-100/50',
                 )}
             >
-                <Hash className="h-4 w-4 shrink-0" />
+                <Hash
+                    className={cn(
+                        'h-4 w-4 shrink-0',
+                        isMember && 'text-zinc-900',
+                        !isMember && 'text-zinc-400',
+                    )}
+                />
                 <span className="truncate">{channel.name}</span>
             </Button>
-            {showDelete && onDelete && (
-                <div className="opacity-0 flex items-center justify-center group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
-                    <DeleteChannelDialog
-                        channel={channel}
-                        onDelete={onDelete}
-                    />
+            {!isMember && onJoin && (
+                <div className="flex items-center justify-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={e => {
+                            e.stopPropagation()
+                            onJoin()
+                        }}
+                        className="px-2 h-6 hover:bg-zinc-50/50 rounded-sm text-xs text-zinc-500 hover:text-zinc-900"
+                    >
+                        Join
+                    </Button>
                 </div>
             )}
         </div>
@@ -139,17 +173,18 @@ function ChannelListHeader() {
     )
 }
 
-export function ChannelList() {
+interface ChannelListProps {
+    userData: UserData
+    channels: Channel[]
+}
+
+export function ChannelList({ userData, channels }: ChannelListProps) {
     const { channelId } = useParams() as { channelId: string }
     const router = useRouter()
-
-    const { channels } = useChannels()
-    const userData = useStore(state => state.userData)
-
-    const { deleteChannel, canDeleteChannel, createChannel } =
-        useChannelManagement(userData?.id || '')
-
     const [name, setName] = useState('')
+    const isChannelMember = useStore(state => state.isChannelMember)
+
+    const { createChannel, joinChannel } = useChannelManagement(userData.id)
 
     if (!userData) {
         return (
@@ -163,19 +198,7 @@ export function ChannelList() {
         )
     }
 
-    const regularChannels = channels.filter(
-        channel => channel.channel_type === 'channel',
-    )
-
-    const handleDeleteChannel = async (channel: Channel) => {
-        try {
-            await deleteChannel(channel.id)
-        } catch (error) {
-            console.error('[Client] Failed to delete channel:', error)
-        }
-    }
-
-    const handleCreate = async () => {
+    const handleCreate = useCallback(async () => {
         if (!name.trim()) return
         try {
             await createChannel(name)
@@ -183,7 +206,18 @@ export function ChannelList() {
         } catch (error) {
             console.error('[Client] Failed to create channel:', error)
         }
-    }
+    }, [createChannel, name, setName])
+
+    // Sort channels: joined channels first, then alphabetically within each group
+    const sortedChannels = useMemo(() => {
+        return [...channels].sort((a, b) => {
+            const aMember = isChannelMember(a.id)
+            const bMember = isChannelMember(b.id)
+            if (aMember && !bMember) return -1
+            if (!aMember && bMember) return 1
+            return a.name.localeCompare(b.name)
+        })
+    }, [channels, isChannelMember])
 
     return (
         <Dialog>
@@ -191,18 +225,21 @@ export function ChannelList() {
                 <ChannelListHeader />
                 <CollapsibleContent>
                     <div className="px-2 flex flex-col gap-1">
-                        {regularChannels.map(channel => (
-                            <ChannelButton
-                                key={channel.id}
-                                channel={channel}
-                                isActive={channelId === channel.id}
-                                onClick={() =>
-                                    router.push(`/chat/${channel.id}`)
-                                }
-                                onDelete={() => handleDeleteChannel(channel)}
-                                showDelete={canDeleteChannel(channel.id)}
-                            />
-                        ))}
+                        {sortedChannels.map(channel => {
+                            const isMember = isChannelMember(channel.id)
+                            return (
+                                <ChannelButton
+                                    key={channel.id}
+                                    channel={channel}
+                                    isActive={channelId === channel.id}
+                                    onClick={() =>
+                                        router.push(`/chat/${channel.id}`)
+                                    }
+                                    onJoin={() => joinChannel(channel.id)}
+                                    isMember={isMember}
+                                />
+                            )
+                        })}
                     </div>
                 </CollapsibleContent>
             </Collapsible>

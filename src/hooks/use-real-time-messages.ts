@@ -55,7 +55,7 @@ function isMessageRow(obj: any): obj is MessageRow {
     )
 }
 
-export function useRealTimeMessages(channelId: string | undefined) {
+export function useRealTimeMessages(channelId: string) {
     const supabase = createClient()
     const messages = useStore(useShallow(state => state.messages))
     const setMessages = useStore(state => state.setMessages)

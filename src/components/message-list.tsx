@@ -3,9 +3,10 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import type { Database } from '@/lib/supabase/types'
 import { useEffect, useRef, useState } from 'react'
-import { useStore } from '@/lib/store'
-import { createThread } from '@/lib/actions'
+import { UserData, useStore } from '@/lib/store'
+import { createThread } from '@/lib/actions/create-thread'
 import { MessageItem } from './message-item'
+import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom'
 
 interface ThreadReply {
     id: string
@@ -33,37 +34,27 @@ interface Message {
 
 interface MessageListProps {
     messages: Message[]
+    userData: UserData
 }
 
-export function MessageList({ messages }: MessageListProps) {
-    const messagesEndRef = useRef<HTMLDivElement>(null)
+export function MessageList({ messages, userData }: MessageListProps) {
     const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
     const selectedMessageId = useStore(state => state.selectedMessageId)
     const selectMessage = useStore(state => state.selectMessage)
-    const userData = useStore(state => state.userData)
+
     const [isHighlighted, setIsHighlighted] = useState(false)
     const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
     const [openMenuId, setOpenMenuId] = useState<string | null>(null)
     const [expandedThreadIds, setExpandedThreadIds] = useState<Set<string>>(
         new Set(),
     )
-    const [newlyCreatedThreadIds, setNewlyCreatedThreadIds] = useState<
-        Set<string>
-    >(new Set())
+    const [newThreadIds, setNewThreadIds] = useState<Set<string>>(new Set())
 
-    const scrollToBottom = () => {
-        if (shouldScrollToBottom) {
-            messagesEndRef.current?.scrollIntoView()
-        }
-    }
-
-    // Handle new messages
-    useEffect(() => {
-        // Only scroll to bottom for new messages if we're not in a search-result view
-        if (!selectedMessageId && shouldScrollToBottom) {
-            scrollToBottom()
-        }
-    }, [messages])
+    const { scrollAreaRef } = useScrollToBottom({
+        messages,
+        shouldScrollToBottom,
+        setShouldScrollToBottom,
+    })
 
     // Handle scrolling to selected message
     useEffect(() => {
@@ -100,16 +91,6 @@ export function MessageList({ messages }: MessageListProps) {
         }
     }, [selectedMessageId, selectMessage])
 
-    // Re-enable auto-scroll only when user manually scrolls to bottom
-    const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
-        const target = event.target as HTMLDivElement
-        const isAtBottom =
-            target.scrollHeight - target.scrollTop === target.clientHeight
-        if (isAtBottom) {
-            setShouldScrollToBottom(true)
-        }
-    }
-
     const handleCreateThread = async (messageId: string, channelId: string) => {
         try {
             const thread = await createThread(messageId, channelId)
@@ -135,7 +116,7 @@ export function MessageList({ messages }: MessageListProps) {
 
                 // Set the thread as expanded and newly created
                 setExpandedThreadIds(prev => new Set(prev).add(thread.id))
-                setNewlyCreatedThreadIds(prev => new Set(prev).add(thread.id))
+                setNewThreadIds(prev => new Set(prev).add(thread.id))
             }
         } catch (error) {
             console.error('Failed to create thread:', error)
@@ -152,7 +133,7 @@ export function MessageList({ messages }: MessageListProps) {
                 next.delete(threadId)
                 return next
             })
-            setNewlyCreatedThreadIds(prev => {
+            setNewThreadIds(prev => {
                 const next = new Set(prev)
                 next.delete(threadId)
                 return next
@@ -171,7 +152,7 @@ export function MessageList({ messages }: MessageListProps) {
     }
 
     return (
-        <ScrollArea className="flex-1" onScroll={handleScroll}>
+        <ScrollArea ref={scrollAreaRef} className="flex-1 mr-1">
             <div className="p-4 pb-0 space-y-2">
                 {messages.map(message => (
                     <MessageItem
@@ -188,7 +169,7 @@ export function MessageList({ messages }: MessageListProps) {
                                     : null
                                 : null
                         }
-                        newlyCreatedThreadIds={newlyCreatedThreadIds}
+                        newlyCreatedThreadIds={newThreadIds}
                         currentUser={userData!}
                         onOpenMenuChange={(open, messageId) =>
                             setOpenMenuId(open ? messageId : null)
@@ -200,7 +181,6 @@ export function MessageList({ messages }: MessageListProps) {
                         }}
                     />
                 ))}
-                <div ref={messagesEndRef} />
             </div>
         </ScrollArea>
     )

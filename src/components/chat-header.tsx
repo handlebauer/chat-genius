@@ -1,87 +1,13 @@
-'use client'
-
-import { Hash } from 'lucide-react'
-import { UserMenu } from './user-menu'
-import { useStore } from '@/lib/store'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { MessageSearch } from './message-search'
-import type { Database } from '@/lib/supabase/types'
-
-type Channel = Database['public']['Tables']['channels']['Row']
-type UserData = Database['public']['Tables']['users']['Row']
+import type { ReactNode } from 'react'
 
 interface ChatHeaderProps {
-    channel: Channel | undefined
-    user: {
-        id: string
-        email: string
-        data: UserData | null
-    }
+    children: ReactNode
 }
 
-export function ChatHeader({ channel, user }: ChatHeaderProps) {
-    const getDMParticipant = useStore(state => state.getDMParticipant)
-    const isDM = channel?.channel_type === 'direct_message'
-    const dmParticipant = getDMParticipant(channel?.id ?? null, user.id)
-
-    const userInitials = user.data?.name
-        ? user.data.name.substring(0, 2).toUpperCase()
-        : user.email.substring(0, 2).toUpperCase()
-
-    if (!channel?.name) {
-        return (
-            <div className="flex justify-between items-center px-4 h-14 border-b">
-                <div className="flex-1" />
-                <div className="flex items-center gap-4">
-                    <MessageSearch />
-                    <UserMenu
-                        email={user.email}
-                        userData={user.data}
-                        userInitials={userInitials}
-                    />
-                </div>
-            </div>
-        )
-    }
-
-    const avatarUrl = dmParticipant?.avatar_url || undefined
-    const displayName = isDM
-        ? dmParticipant?.name || 'Unknown User'
-        : channel.name
-
+export function ChatHeader({ children }: ChatHeaderProps) {
     return (
-        <div className="flex justify-between items-center px-4 h-14 border-b">
-            <div className="flex items-center justify-center">
-                {isDM ? (
-                    <>
-                        <Avatar className="w-5 h-5 mr-2">
-                            <AvatarImage src={avatarUrl} alt={displayName} />
-                            <AvatarFallback className="text-xs">
-                                {displayName.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
-                        <h2 className="font-medium text-zinc-900">
-                            {displayName}
-                        </h2>
-                    </>
-                ) : (
-                    <>
-                        <Hash className="mr-[2px] w-[18px] h-[18px] text-zinc-900" />
-                        <h2 className="font-medium text-zinc-900">
-                            {displayName.toLowerCase()}
-                        </h2>
-                    </>
-                )}
-            </div>
-
-            <div className="flex items-center gap-4">
-                <MessageSearch />
-                <UserMenu
-                    email={user.email}
-                    userData={user.data}
-                    userInitials={userInitials}
-                />
-            </div>
+        <div className="flex justify-between items-center px-4 h-14 border-b bg-zinc-50 absolute top-0 left-0 right-0">
+            {children}
         </div>
     )
 }

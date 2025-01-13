@@ -76,7 +76,7 @@ export function ActionButtons({
             <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-transparent text-muted-foreground hover:text-primary disabled:opacity-50"
+                className="h-8 w-8 p-0 hover:bg-transparent text-zinc-400 group-focus-within:text-zinc-600 transition-colors disabled:opacity-50"
                 onClick={handleFileClick}
                 disabled={uploading}
             >

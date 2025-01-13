@@ -3,7 +3,7 @@ import { Channel, useStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 import { useShallow } from 'zustand/react/shallow'
 
-export function useChannels(channelId: string, initialChannels?: Channel[]) {
+export function useDMs(channelId: string, initialDirectMessages?: Channel[]) {
     const supabase = createClient()
 
     const setChannels = useStore(state => state.setChannels)
@@ -11,10 +11,14 @@ export function useChannels(channelId: string, initialChannels?: Channel[]) {
     const activeChannelId = useStore(state => state.activeChannelId)
     const channels = useStore(useShallow(state => state.channels))
 
-    // Initialize store with server-fetched channels if provided
+    // Initialize store with server-fetched DMs if provided
     useEffect(() => {
-        if (initialChannels?.length) {
-            setChannels(initialChannels)
+        if (initialDirectMessages?.length) {
+            // Merge DMs with existing channels
+            setChannels([
+                ...channels.filter(c => c.channel_type !== 'direct_message'),
+                ...initialDirectMessages,
+            ])
 
             // Set active channel if not already set
             if (!activeChannelId && channelId) {
@@ -22,33 +26,45 @@ export function useChannels(channelId: string, initialChannels?: Channel[]) {
             }
         }
     }, [
-        initialChannels,
+        initialDirectMessages,
         setChannels,
         channelId,
         activeChannelId,
         setActiveChannelId,
+        channels,
     ])
 
-    // Find current channel
-    const currentChannel = channels?.find(channel => channel.id === channelId)
+    // Find current DM channel
+    const currentChannel = channels?.find(
+        channel =>
+            channel.id === channelId &&
+            channel.channel_type === 'direct_message',
+    )
 
     useEffect(() => {
-        // Only fetch channels if we don't have any (not initialized from server)
-        async function loadChannels() {
-            if (channels?.length > 0) return
+        // Only fetch DMs if we don't have any (not initialized from server)
+        async function loadDirectMessages() {
+            if (channels?.some(c => c.channel_type === 'direct_message')) return
 
             const { data: fetchedChannels, error } = await supabase
                 .from('channels')
                 .select('*')
+                .eq('channel_type', 'direct_message')
                 .order('created_at')
 
             if (error) {
-                console.error('Error loading channels:', error)
+                console.error('Error loading direct messages:', error)
                 return
             }
 
             if (fetchedChannels) {
-                setChannels(fetchedChannels)
+                // Merge DMs with existing channels
+                setChannels([
+                    ...channels.filter(
+                        c => c.channel_type !== 'direct_message',
+                    ),
+                    ...fetchedChannels,
+                ])
                 const noSelectedChannel =
                     !activeChannelId && fetchedChannels.length > 0
                 if (noSelectedChannel) {
@@ -58,33 +74,32 @@ export function useChannels(channelId: string, initialChannels?: Channel[]) {
             }
         }
 
-        loadChannels()
+        loadDirectMessages()
 
-        // Subscribe to channel changes
+        // Subscribe to DM channel changes
         const channel = supabase
-            .channel('channel_updates')
+            .channel('dm_updates')
             .on(
                 'postgres_changes',
                 {
                     event: '*',
                     schema: 'public',
                     table: 'channels',
+                    filter: 'channel_type=eq.direct_message',
                 },
-                () => loadChannels(),
+                () => loadDirectMessages(),
             )
             .subscribe()
 
         return () => {
             channel.unsubscribe()
         }
-    }, [
-        supabase,
-        setChannels,
-        activeChannelId,
-        setActiveChannelId,
-        channels?.length,
-    ])
+    }, [supabase, setChannels, activeChannelId, setActiveChannelId, channels])
 
-    // Always return channels from store, even if empty
-    return { channels: channels || [], currentChannel }
+    // Return only DM channels from the store
+    return {
+        directMessages:
+            channels?.filter(c => c.channel_type === 'direct_message') || [],
+        currentChannel,
+    }
 }

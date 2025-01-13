@@ -7,10 +7,7 @@ export function useMessageSender(
 ) {
     const supabase = createClient()
 
-    const sendMessage = async (
-        content: string,
-        attachments?: UploadedFile[],
-    ) => {
+    const onSend = async (content: string, attachments?: UploadedFile[]) => {
         if (!userId || !channelId) return
 
         // Insert the message first
@@ -48,5 +45,5 @@ export function useMessageSender(
         return message
     }
 
-    return sendMessage
+    return { onSend }
 }

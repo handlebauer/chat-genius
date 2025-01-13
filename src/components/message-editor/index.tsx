@@ -1,3 +1,7 @@
+'use client'
+
+import './message-editor.css'
+
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { useCallback, useRef, KeyboardEvent, useState } from 'react'
@@ -5,35 +9,30 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { ToolbarButtons } from './toolbar-buttons'
 import { ActionButtons } from './action-buttons'
 import { FilePreview } from './file-preview'
-import './message-editor.css'
+import { Channel } from '@/lib/store'
 import type { UploadedFile } from '@/hooks/use-file-upload'
-import type { Database } from '@/lib/supabase/types'
-
-type Channel = Database['public']['Tables']['channels']['Row']
+import { sendMessage } from '@/lib/actions/send-message'
 
 interface MessageEditorProps {
-    onSend: (content: string, attachments?: UploadedFile[]) => void
-    channel?: Channel
+    currentChannel: Channel
     userId: string
     dmParticipant?: { name: string; email: string } | null
 }
 
 export function MessageEditor({
-    onSend,
-    channel,
+    currentChannel,
     userId,
     dmParticipant,
 }: MessageEditorProps) {
     const editorRef = useRef(null)
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+    const [, setSelectedFiles] = useState<File[]>([])
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
 
     const getPlaceholder = () => {
-        if (!channel?.name) return ''
-        if (channel.channel_type === 'direct_message') {
+        if (currentChannel.channel_type === 'direct_message') {
             return `Message ${dmParticipant?.name || dmParticipant?.email || 'user'}`
         }
-        return `Message #${channel.name.toLowerCase()}`
+        return `Message #${currentChannel.name.toLowerCase()}`
     }
 
     const editor = useEditor(
@@ -54,7 +53,7 @@ export function MessageEditor({
             },
             immediatelyRender: false,
         },
-        [channel?.name, dmParticipant],
+        [currentChannel.name, dmParticipant],
     )
 
     const handleKeyDown = useCallback(
@@ -63,14 +62,19 @@ export function MessageEditor({
                 event.preventDefault()
                 if (!editor?.isEmpty || uploadedFiles.length > 0) {
                     const content = editor?.getHTML() || ''
-                    onSend(content, uploadedFiles)
+                    sendMessage(
+                        content,
+                        userId,
+                        currentChannel.id,
+                        uploadedFiles,
+                    )
                     editor?.commands.clearContent()
                     setSelectedFiles([])
                     setUploadedFiles([])
                 }
             }
         },
-        [editor, onSend, uploadedFiles],
+        [editor, sendMessage, uploadedFiles],
     )
 
     const handleSend = useCallback(() => {
@@ -80,12 +84,12 @@ export function MessageEditor({
                 content,
                 attachments: uploadedFiles,
             })
-            onSend(content, uploadedFiles)
+            sendMessage(content, userId, currentChannel.id, uploadedFiles)
             editor?.commands.clearContent()
             setSelectedFiles([])
             setUploadedFiles([])
         }
-    }, [editor, onSend, uploadedFiles])
+    }, [editor, sendMessage, uploadedFiles])
 
     const handleContainerClick = useCallback(
         (e: React.MouseEvent) => {
@@ -113,38 +117,38 @@ export function MessageEditor({
         setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
     }, [])
 
-    if (!channel?.name) return null
-
     return (
         <div className="p-4 pt-0">
             <div
                 className="relative rounded-lg border border-input bg-background/80 transition-all duration-200 hover:bg-background focus-within:bg-background focus-within:border-zinc-400 focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.2)] group cursor-text"
                 onClick={handleContainerClick}
             >
-                <div className="flex flex-col">
-                    <ToolbarButtons editor={editor} />
-                    <div className="px-3 py-2">
-                        <div
-                            className="flex-1"
-                            ref={editorRef}
-                            onKeyDown={handleKeyDown}
-                        >
-                            <EditorContent editor={editor} />
+                {editor && (
+                    <div className="flex flex-col">
+                        <ToolbarButtons editor={editor} />
+                        <div className="px-3 py-2">
+                            <div
+                                className="flex-1"
+                                ref={editorRef}
+                                onKeyDown={handleKeyDown}
+                            >
+                                <EditorContent editor={editor} />
+                            </div>
                         </div>
+                        <FilePreview
+                            files={uploadedFiles}
+                            onRemove={handleFileRemove}
+                        />
+                        <ActionButtons
+                            editor={editor}
+                            onSend={handleSend}
+                            userId={userId}
+                            onFilesSelected={handleFilesSelected}
+                            onUploadComplete={handleFileUploadComplete}
+                            onFileRemove={handleFileRemove}
+                        />
                     </div>
-                    <FilePreview
-                        files={uploadedFiles}
-                        onRemove={handleFileRemove}
-                    />
-                    <ActionButtons
-                        editor={editor}
-                        onSend={handleSend}
-                        userId={userId}
-                        onFilesSelected={handleFilesSelected}
-                        onUploadComplete={handleFileUploadComplete}
-                        onFileRemove={handleFileRemove}
-                    />
-                </div>
+                )}
             </div>
         </div>
     )

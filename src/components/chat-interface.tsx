@@ -1,107 +1,37 @@
-'use client'
+// 'use client'
 
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { User } from '@supabase/supabase-js'
-import { MessageEditor } from './message-editor'
-import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
-import { useUserData } from '@/hooks/use-user-data'
-import { useMessageSender } from '@/hooks/use-message-sender'
-import { DirectMessagesList } from '@/components/direct-messages-list'
-import { useStore } from '@/lib/store'
-import { useParams } from 'next/navigation'
-import { MessagesSection } from './messages-section'
-import { ChatHeader } from './chat-header'
-import { ChannelList } from './channel-list'
-
-import type { Database } from '@/lib/supabase/types'
-import { useEffect } from 'react'
-
-type UserData = Database['public']['Tables']['users']['Row']
+import { useChatData } from '@/hooks/use-chat-data'
+import { ClientSideWrapper } from './client-side-wrapper'
 
 interface ChatInterfaceProps {
     user: User
+    channelId: string
 }
 
-export function ChatInterface({ user }: ChatInterfaceProps) {
-    const { channelId } = useParams() as { channelId: string }
+export async function ChatInterface({ user, channelId }: ChatInterfaceProps) {
+    const chatData = await useChatData(user, channelId)
 
-    const getCurrentChannel = useStore(state => state.getCurrentChannel)
-    const setActiveChannelId = useStore(state => state.setActiveChannelId)
-    const channelsLoading = useStore(state => state.channelsLoading)
-    const getDMParticipant = useStore(state => state.getDMParticipant)
+    if (!chatData) {
+        return null
+    }
 
-    const currentChannel = getCurrentChannel()
-    const userData = useUserData(user.id) as UserData | null
-    const isDM = currentChannel?.channel_type === 'direct_message'
-    const rawDmParticipant = isDM
-        ? getDMParticipant(currentChannel?.id ?? null, user.id)
-        : null
-    const dmParticipant = rawDmParticipant
-        ? {
-              name: rawDmParticipant.name || rawDmParticipant.email,
-              email: rawDmParticipant.email,
-          }
-        : null
-
-    // Ensure activeChannelId stays in sync with route
-    useEffect(() => {
-        if (!channelsLoading) {
-            setActiveChannelId(channelId)
-        }
-    }, [channelId, setActiveChannelId, channelsLoading])
-
-    const { messages, loading: messagesLoading } =
-        useRealTimeMessages(channelId)
-    const sendMessage = useMessageSender(userData?.id, channelId)
-
-    // Ensure we have a valid email string
-    const userEmail =
-        typeof user.email === 'string' && user.email.length > 0
-            ? user.email
-            : 'anonymous@user.com'
+    const {
+        userData,
+        channels,
+        directMessages,
+        currentChannelMembers,
+        channelMemberships,
+    } = chatData
 
     return (
         <div className="flex h-screen">
-            <div className="flex flex-col w-64 border-r bg-zinc-50">
-                <div className="flex items-center px-4 h-14 border-b">
-                    <h1 className="text-2xl font-bold tracking-tight text-zinc-800">
-                        ChatGenius
-                    </h1>
-                </div>
-
-                <ScrollArea className="flex-1">
-                    <ChannelList />
-                    <Separator className="my-2" />
-                    <DirectMessagesList userId={user.id} />
-                </ScrollArea>
-            </div>
-
-            <div className="flex flex-col flex-1">
-                <ChatHeader
-                    channel={channelsLoading ? undefined : currentChannel}
-                    user={{
-                        id: user.id,
-                        email: userEmail,
-                        data: userData,
-                    }}
-                />
-
-                {!channelsLoading && currentChannel && userData?.id && (
-                    <>
-                        <MessagesSection
-                            messages={messages}
-                            loading={messagesLoading}
-                        />
-                        <MessageEditor
-                            channel={currentChannel}
-                            userId={userData.id}
-                            onSend={sendMessage}
-                            dmParticipant={isDM ? dmParticipant : null}
-                        />
-                    </>
-                )}
-            </div>
+            <ClientSideWrapper
+                channelId={channelId}
+                userData={userData}
+                initialData={{ channels, directMessages, channelMemberships }}
+                currentChannelMembers={currentChannelMembers}
+            />
         </div>
     )
 }

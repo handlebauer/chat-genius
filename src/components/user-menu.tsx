@@ -1,8 +1,7 @@
-'use client'
-
+import { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
-import { signOutAction } from '@/lib/actions'
+import { signOutAction } from '@/lib/actions/sign-out'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -12,27 +11,53 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import type { Database } from '@/lib/supabase/types'
 
 interface UserMenuProps {
     email: string
-    userData: Database['public']['Tables']['users']['Row'] | null
-    userInitials: string
+    name: string | null
+    avatar_url: string | null
 }
 
-export function UserMenu({ email, userData, userInitials }: UserMenuProps) {
+const UserAvatar = memo(function UserAvatar({
+    email,
+    name,
+    avatar_url,
+}: UserMenuProps) {
+    const userInitials = useMemo(() => {
+        return name
+            ? name.substring(0, 2).toUpperCase()
+            : email.substring(0, 2).toUpperCase()
+    }, [name, email])
+
+    // Stabilize the src prop by not passing undefined
+    const avatarSrc = avatar_url || ''
+    const avatarAlt = name || email || ''
+
+    return (
+        <Button variant="ghost" size="icon" className="rounded-full">
+            <Avatar>
+                <AvatarImage src={avatarSrc} alt={avatarAlt} />
+                <AvatarFallback>{userInitials}</AvatarFallback>
+            </Avatar>
+        </Button>
+    )
+})
+
+export const UserMenu = memo(function UserMenu({
+    email,
+    name,
+    avatar_url,
+}: UserMenuProps) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                    <Avatar>
-                        <AvatarImage
-                            src={userData?.avatar_url || undefined}
-                            alt={userData?.name || email || ''}
-                        />
-                        <AvatarFallback>{userInitials}</AvatarFallback>
-                    </Avatar>
-                </Button>
+                <DropdownMenuTrigger asChild>
+                    <UserAvatar
+                        email={email}
+                        name={name}
+                        avatar_url={avatar_url}
+                    />
+                </DropdownMenuTrigger>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
@@ -49,4 +74,4 @@ export function UserMenu({ email, userData, userInitials }: UserMenuProps) {
             </DropdownMenuContent>
         </DropdownMenu>
     )
-}
+})

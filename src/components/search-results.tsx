@@ -1,25 +1,5 @@
+import { SearchResult } from '@/hooks/use-search-bar'
 import { formatDate } from '@/lib/utils'
-
-export interface SearchResult {
-    messages: Array<{
-        id: string
-        content: string
-        created_at: string | null
-        channel_id: string | null
-        sender: {
-            id: string
-            name: string
-            avatar_url?: string | null
-        }
-        channel: {
-            name: string
-            type: string
-        }
-        rank: number
-    }>
-    total: number
-    hasMore: boolean
-}
 
 function escapeRegExp(string: string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -115,7 +95,7 @@ export function SearchResults({
                         <div className="flex items-center justify-between gap-2 mb-1">
                             <div className="flex items-center gap-2">
                                 <span className="font-medium text-sm">
-                                    {highlightText(message.sender.name, query)}
+                                    {highlightText(message.sender.name!, query)}
                                 </span>
                                 <span className="text-xs text-zinc-500">
                                     {message.channel.type === 'direct_message'

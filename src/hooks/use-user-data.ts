@@ -28,5 +28,5 @@ export function useUserData(userId: string) {
         loadUserData()
     }, [userId, supabase, setUserData])
 
-    return userData
+    return { userData }
 }

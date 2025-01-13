@@ -53,6 +53,13 @@ BEGIN
     SELECT id INTO general_channel_id FROM channels WHERE name = 'general';
     SELECT id INTO ai_channel_id FROM channels WHERE name = 'ai-memes';
 
+    -- Ensure system user is a member of both channels
+    INSERT INTO channel_members (channel_id, user_id, role)
+    VALUES
+        (general_channel_id, system_user_id, 'owner'),
+        (ai_channel_id, system_user_id, 'owner')
+    ON CONFLICT (channel_id, user_id) DO NOTHING;
+
     -- Insert seed messages for general channel
     INSERT INTO messages (id, content, channel_id, sender_id, created_at, updated_at)
     VALUES

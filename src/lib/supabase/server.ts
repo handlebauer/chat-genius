@@ -19,14 +19,6 @@ export const createClient = async () => {
         config.NEXT_PUBLIC_SUPABASE_URL!,
         config.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
-            global: {
-                fetch: createFetch({
-                    next: {
-                        revalidate: 300,
-                        tags: ['supabase'],
-                    },
-                }),
-            },
             cookies: {
                 getAll() {
                     return cookieStore.getAll()

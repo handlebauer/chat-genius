@@ -9,62 +9,164 @@ import {
 } from '@/components/ui/collapsible'
 import { ChevronDown } from 'lucide-react'
 import { useOnlineUsers } from '@/hooks/use-online-users'
-import { useUserData } from '@/hooks/use-user-data'
 import { useIdleDetection } from '@/hooks/use-idle-detection'
-import { useRouter, useParams } from 'next/navigation'
-import { getOrCreateDMChannel } from '@/lib/actions'
-import { useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useMemo, memo } from 'react'
 import { cn } from '@/lib/utils'
-import { useStore } from '@/lib/store'
+import { Channel, UserData } from '@/lib/store'
+import { useDMs } from '@/hooks/use-dms'
 
-export function DirectMessagesList({ userId }: { userId: string }) {
+const getStatusColor = (status?: string) => {
+    switch (status) {
+        case 'away':
+            return 'text-yellow-500'
+        case 'online':
+            return 'text-green-500'
+        default:
+            return 'text-gray-500'
+    }
+}
+
+interface DirectMessagesListProps {
+    userData: UserData
+    currentChannel: Channel
+    directMessages: Channel[]
+}
+
+interface DirectMessageUserProps {
+    user: {
+        id: string
+        name?: string
+        email?: string
+        status?: string
+    }
+    isActive: boolean
+    onClick: () => void
+}
+
+const DirectMessageUser = memo(function DirectMessageUser({
+    user,
+    isActive,
+    onClick,
+}: DirectMessageUserProps) {
+    const buttonClassName = useMemo(
+        () =>
+            cn(
+                'flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto',
+                isActive && 'bg-zinc-200',
+            ),
+        [isActive],
+    )
+
+    const statusClassName = useMemo(
+        () => `scale-[0.5] ${getStatusColor(user.status)} fill-current`,
+        [user.status],
+    )
+
+    const displayName = useMemo(
+        () => user.name || user.email,
+        [user.name, user.email],
+    )
+
+    if (!displayName) return null
+
+    return (
+        <Button variant="ghost" className={buttonClassName} onClick={onClick}>
+            <Circle className={statusClassName} />
+            {displayName}
+        </Button>
+    )
+})
+
+export function DirectMessagesList({
+    userData,
+    currentChannel,
+    directMessages: initialDirectMessages,
+}: DirectMessagesListProps) {
+    const userId = userData.id
+    const { directMessages } = useDMs(currentChannel.id, initialDirectMessages)
     const { onlineUsers } = useOnlineUsers({ userId })
-    const currentUser = useUserData(userId)
-    const router = useRouter()
     const { isIdle } = useIdleDetection()
-    const { channelId } = useParams() as { channelId: string }
-    const getCurrentChannel = useStore(state => state.getCurrentChannel)
-    const currentChannel = getCurrentChannel()
+    const router = useRouter()
 
-    // Memoize filtered users to prevent unnecessary recalculations
-    const otherOnlineUsers = useMemo(() => {
-        return onlineUsers.filter(user => user.id !== currentUser?.id)
-    }, [onlineUsers, currentUser?.id])
+    console.log('directMessages', directMessages)
 
-    const handleUserClick = async (otherUserId: string) => {
-        try {
-            const channel = await getOrCreateDMChannel(userId, otherUserId)
-            router.push(`/chat/${channel.id}`)
-        } catch (error) {
-            console.error('Failed to create or get DM channel:', error)
-        }
-    }
+    // Extract unique user IDs from DM channel names
+    const dmUserIds = useMemo(() => {
+        const userIds = new Set<string>()
+        directMessages.forEach(channel => {
+            if (channel.channel_type === 'direct_message') {
+                const [, participants] = channel.name.split(':')
+                const [user1, user2] = participants.split('_')
+                if (user1 !== userId) userIds.add(user1)
+                if (user2 !== userId) userIds.add(user2)
+            }
+        })
+        return Array.from(userIds)
+    }, [directMessages, userId])
 
-    const getStatusColor = (status?: string) => {
-        switch (status) {
-            case 'away':
-                return 'text-yellow-500'
-            case 'online':
-                return 'text-green-500'
-            default:
-                return 'text-gray-500'
-        }
-    }
+    // Get DM users with their online status
+    const dmUsers = useMemo(() => {
+        return dmUserIds.map(dmUserId => {
+            const onlineUser = onlineUsers.find(user => user.id === dmUserId)
+            return {
+                id: dmUserId,
+                name: onlineUser?.name,
+                email: onlineUser?.email,
+                status: onlineUser?.status || 'offline',
+            }
+        })
+    }, [dmUserIds, onlineUsers])
 
-    const isUserActive = (userId: string) => {
+    const handleUserClick = useCallback(
+        async (otherUserId: string) => {
+            // Find existing DM channel
+            const dmName = `dm:${userId}_${otherUserId}`
+            const altDmName = `dm:${otherUserId}_${userId}`
+            const existingChannel = directMessages.find(
+                channel =>
+                    channel.name === dmName || channel.name === altDmName,
+            )
+
+            if (existingChannel) {
+                router.push(`/chat/${existingChannel.id}`)
+            }
+        },
+        [userId, router, directMessages],
+    )
+
+    const isUserActive = (selectedUserId: string) => {
         if (
             !currentChannel ||
-            !channelId ||
-            currentChannel.channel_type !== 'direct_message'
-        )
+            currentChannel.channel_type !== 'direct_message' ||
+            selectedUserId === userId
+        ) {
             return false
-        if (userId === currentUser?.id) return false
-        const [, userIds] = currentChannel.name.split(':')
-        return (
-            userIds.split('_').includes(userId) &&
-            channelId === currentChannel.id
-        )
+        }
+        const [, participants] = currentChannel.name.split(':')
+        const [user1, user2] = participants.split('_')
+        return selectedUserId === user1 || selectedUserId === user2
     }
+
+    const currentUserButtonClassName = useMemo(
+        () =>
+            cn(
+                'flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto',
+                isUserActive(userData.id) && 'bg-zinc-200',
+            ),
+        [isUserActive, userData.id],
+    )
+
+    const currentUserStatusClassName = useMemo(
+        () =>
+            `scale-[0.5] ${getStatusColor(isIdle ? 'away' : 'online')} fill-current`,
+        [isIdle],
+    )
+
+    const currentUserDisplayName = useMemo(
+        () => userData.name || userData.email,
+        [userData.name, userData.email],
+    )
 
     return (
         <Collapsible defaultOpen className="px-2">
@@ -78,39 +180,25 @@ export function DirectMessagesList({ userId }: { userId: string }) {
             </div>
             <CollapsibleContent>
                 <div className="px-2">
-                    {currentUser && (
-                        <Button
-                            key={currentUser.id}
-                            variant="ghost"
-                            className={cn(
-                                'flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto',
-                                isUserActive(currentUser.id) && 'bg-zinc-200',
-                            )}
-                        >
-                            <Circle
-                                className={`scale-[0.5] ${getStatusColor(isIdle ? 'away' : 'online')} fill-current`}
-                            />
-                            {currentUser.name || currentUser.email}{' '}
-                            <span className="text-zinc-400 ml-1 text-[13px] inline-flex items-center font-extralight">
-                                you
-                            </span>
-                        </Button>
-                    )}
-                    {otherOnlineUsers.map(user => (
-                        <Button
+                    <Button
+                        key={userData.id}
+                        variant="ghost"
+                        className={currentUserButtonClassName}
+                    >
+                        <Circle className={currentUserStatusClassName} />
+                        {currentUserDisplayName}{' '}
+                        <span className="text-zinc-400 ml-1 text-[13px] inline-flex items-center font-extralight">
+                            you
+                        </span>
+                    </Button>
+
+                    {dmUsers.map(user => (
+                        <DirectMessageUser
                             key={user.id}
-                            variant="ghost"
-                            className={cn(
-                                'flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto',
-                                isUserActive(user.id) && 'bg-zinc-200',
-                            )}
+                            user={user}
+                            isActive={isUserActive(user.id)}
                             onClick={() => handleUserClick(user.id)}
-                        >
-                            <Circle
-                                className={`scale-[0.5] ${getStatusColor(user.status)} fill-current`}
-                            />
-                            {user.name || user.email}
-                        </Button>
+                        />
                     ))}
                 </div>
             </CollapsibleContent>

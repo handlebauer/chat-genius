@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/supabase/types'
 
 // Types
@@ -23,7 +22,7 @@ interface Reaction {
     hasReacted: boolean
 }
 
-interface Message {
+export interface Message {
     id: string
     content: string
     sender: Database['public']['Tables']['users']['Row']
@@ -42,9 +41,9 @@ export interface OnlineUser {
     status: 'online' | 'away'
 }
 
-type Channel = Database['public']['Tables']['channels']['Row']
+export type Channel = Database['public']['Tables']['channels']['Row']
 
-type UserData = Database['public']['Tables']['users']['Row']
+export type UserData = Database['public']['Tables']['users']['Row']
 
 // Store interfaces
 interface MessagesState {
@@ -87,11 +86,12 @@ interface UserState {
 interface ChannelsState {
     channels: Channel[]
     channelsLoading: boolean
-    setChannels: (channels: Channel[]) => void
+    isHydrated: boolean
+    channelMemberships: Record<string, boolean> // Track which channels the user is a member of
+    setChannels: (channels: Channel[], isHydrating?: boolean) => void
     setChannelsLoading: (loading: boolean) => void
     activeChannelId: string | null
     setActiveChannelId: (id: string | null) => void
-    getCurrentChannel: () => Channel | undefined
     getDMParticipant: (
         channelId: string | null,
         currentUserId: string,
@@ -99,6 +99,8 @@ interface ChannelsState {
     addChannel: (channel: Channel) => void
     removeChannel: (channelId: string) => void
     canDeleteChannel: (channelId: string, userId: string) => boolean
+    setChannelMemberships: (memberships: Record<string, boolean>) => void
+    isChannelMember: (channelId: string) => boolean
 }
 
 // Combined store type
@@ -165,7 +167,7 @@ export const useStore = create<Store>((set, get) => ({
             },
         }))
     },
-    toggleReaction: (messageId, channelId, emoji, userId) => {
+    toggleReaction: (messageId, channelId, emoji) => {
         set(state => {
             const messages = state.messages[channelId] || []
             const message = messages.find(m => m.id === messageId)
@@ -231,49 +233,17 @@ export const useStore = create<Store>((set, get) => ({
     // Channels slice
     channels: [],
     channelsLoading: true,
-    setChannels: channels => set({ channels, channelsLoading: false }),
+    isHydrated: false,
+    channelMemberships: {},
+    setChannels: (channels, isHydrating = false) =>
+        set({
+            channels,
+            channelsLoading: false,
+            isHydrated: isHydrating ? true : get().isHydrated,
+        }),
     setChannelsLoading: loading => set({ channelsLoading: loading }),
     activeChannelId: null,
     setActiveChannelId: id => set({ activeChannelId: id }),
-    getCurrentChannel: () => {
-        const { channels, activeChannelId } = get()
-        return channels.find(channel => channel.id === activeChannelId)
-    },
-    getDMParticipant: (channelId, currentUserId) => {
-        const state = get()
-        const channel = state.channels.find(c => c.id === channelId)
-
-        if (!channel || channel.channel_type !== 'direct_message') return null
-
-        // Extract user IDs from the channel name (format: dm:userId1_userId2)
-        const [, userIds] = channel.name.split(':')
-        const otherUserId = userIds.split('_').find(id => id !== currentUserId)
-        if (!otherUserId) return null
-
-        // Try to find the other user from multiple sources
-        // 1. Check message history for user data (most complete data)
-        const channelMessages = state.messages[channel.id] || []
-        const userFromMessages = channelMessages.find(
-            msg => msg.sender.id === otherUserId,
-        )?.sender
-        if (userFromMessages) return userFromMessages
-
-        // 2. Check online users
-        const onlineUser = state.onlineUsers.find(u => u.id === otherUserId)
-        if (onlineUser) {
-            return {
-                id: onlineUser.id,
-                name: onlineUser.name,
-                email: onlineUser.email || '',
-                avatar_url: null,
-                status: 'online',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            }
-        }
-
-        return null
-    },
     addChannel: channel =>
         set(state => ({
             channels: [...state.channels, channel],
@@ -289,5 +259,46 @@ export const useStore = create<Store>((set, get) => ({
     canDeleteChannel: (channelId, userId) => {
         const channel = get().channels.find(c => c.id === channelId)
         return channel?.created_by === userId
+    },
+    setChannelMemberships: memberships =>
+        set(state => ({
+            channelMemberships: memberships,
+        })),
+    isChannelMember: channelId => {
+        return get().channelMemberships[channelId] || false
+    },
+    getDMParticipant: (channelId, currentUserId) => {
+        const { channels, messages, onlineUsers } = get()
+        const channel = channels.find(c => c.id === channelId)
+        if (!channel || channel.channel_type !== 'direct_message') return null
+
+        // Extract user IDs from the channel name (format: dm:userId1_userId2)
+        const userIds = channel.name.slice(3).split('_')
+        const otherUserId = userIds.find(id => id !== currentUserId)
+        if (!otherUserId) return null
+
+        // Try to find the other user from multiple sources
+        // 1. Check message history for user data (most complete data)
+        const channelMessages = messages[channel.id] || []
+        const userFromMessages = channelMessages.find(
+            msg => msg.sender.id === otherUserId,
+        )?.sender
+        if (userFromMessages) return userFromMessages
+
+        // 2. Check online users
+        const onlineUser = onlineUsers.find(u => u.id === otherUserId)
+        if (onlineUser) {
+            return {
+                id: onlineUser.id,
+                name: onlineUser.name,
+                email: onlineUser.email || '',
+                avatar_url: null,
+                status: 'online',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            }
+        }
+
+        return null
     },
 }))

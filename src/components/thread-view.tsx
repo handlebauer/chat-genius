@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { MessageSquare } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { createThreadReply } from '@/lib/actions'
+import { createThreadReply } from '@/lib/actions/create-thread-reply'
 import { useClickOutside } from '@/hooks/use-click-outside'
 import type { Database } from '@/lib/supabase/types'
 

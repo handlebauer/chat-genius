@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import type { UploadedFile } from '@/hooks/use-file-upload'
 import { formatFileSize } from '@/lib/utils'
 import Image from 'next/image'
-import { createClientComponent } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 interface FilePreviewProps {
     files: UploadedFile[]
@@ -47,7 +47,7 @@ function FilePreviewContent({
     file: Required<UploadedFile>
     onRemove: (id: string) => void
 }) {
-    const supabase = createClientComponent()
+    const supabase = createClient()
     const isImage = IMAGE_TYPES.includes(file.file_type)
 
     if (isImage) {
