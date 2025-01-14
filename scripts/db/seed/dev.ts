@@ -71,6 +71,36 @@ async function createTestUsers() {
     }
 }
 
+async function addChannelMember(
+    channelId: string,
+    userId: string,
+    role: 'owner' | 'admin' | 'member' = 'member',
+) {
+    try {
+        const { error } = await supabase
+            .from('channel_members')
+            .insert({
+                channel_id: channelId,
+                user_id: userId,
+                role,
+            })
+            .select()
+            .single()
+
+        if (error) {
+            // If it's a unique violation, we can ignore it as the user is already a member
+            if (error.code !== '23505') {
+                console.error(
+                    `Failed to add user ${userId} to channel ${channelId}:`,
+                    error,
+                )
+            }
+        }
+    } catch (error) {
+        console.error(`Failed to add channel member:`, error)
+    }
+}
+
 async function createChannel(name: string, messages: typeof generalMessages) {
     try {
         const { data: channel, error } = await supabase
@@ -91,6 +121,9 @@ async function createChannel(name: string, messages: typeof generalMessages) {
 
         console.log(`Created ${name} channel:`, channel.id)
 
+        // Add system user as channel member (will be owner due to trigger)
+        await addChannelMember(channel.id, systemUserId!)
+
         // Add a welcome message from the system user
         const welcomeMessage =
             name === 'general'
@@ -107,12 +140,21 @@ async function createChannel(name: string, messages: typeof generalMessages) {
             console.error('Failed to create welcome message:', messageError)
         }
 
+        // Track unique senders to avoid duplicate member additions
+        const addedMembers = new Set<string>()
+
         // Add the test messages
         for (const message of messages) {
             const senderId = userIds[message.sender]
             if (!senderId) {
                 console.warn(`No user ID found for ${message.sender}`)
                 continue
+            }
+
+            // Add user as channel member if not already added
+            if (!addedMembers.has(senderId)) {
+                await addChannelMember(channel.id, senderId)
+                addedMembers.add(senderId)
             }
 
             const { error: messageError } = await supabase
@@ -130,6 +172,7 @@ async function createChannel(name: string, messages: typeof generalMessages) {
         }
 
         console.log(`Seeded ${messages.length} messages in ${name} channel`)
+        console.log(`Added ${addedMembers.size} members to ${name} channel`)
     } catch (error) {
         console.error(`Failed to create ${name} channel:`, error)
     }
