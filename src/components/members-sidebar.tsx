@@ -45,16 +45,6 @@ export function MembersSidebar({
     const { isIdle } = useIdleDetection()
     const channels = useStore(useShallow(state => state.channels))
 
-    // Group and sort members by role without showing labels
-    const sortedMembers = useMemo(() => {
-        const roleOrder = ['owner', 'admin', 'member']
-        return [...members].sort((a, b) => {
-            const aIndex = roleOrder.indexOf(a.role)
-            const bIndex = roleOrder.indexOf(b.role)
-            return aIndex - bIndex
-        })
-    }, [members])
-
     // Get online status for each member
     const getMemberStatus = (memberId: string) => {
         // System user should always appear online
@@ -64,6 +54,29 @@ export function MembersSidebar({
         if (!onlineUser) return 'offline'
         return onlineUser.status === 'away' || isIdle ? 'away' : 'online'
     }
+
+    // Group and sort members by online status first, then role
+    const sortedMembers = useMemo(() => {
+        const roleOrder = ['owner', 'admin', 'member']
+        const statusOrder = ['online', 'away', 'offline']
+
+        return [...members].sort((a, b) => {
+            const aStatus = getMemberStatus(a.id)
+            const bStatus = getMemberStatus(b.id)
+
+            // First sort by online status
+            const aStatusIndex = statusOrder.indexOf(aStatus)
+            const bStatusIndex = statusOrder.indexOf(bStatus)
+            if (aStatusIndex !== bStatusIndex) {
+                return aStatusIndex - bStatusIndex
+            }
+
+            // Then sort by role within each status group
+            const aIndex = roleOrder.indexOf(a.role)
+            const bIndex = roleOrder.indexOf(b.role)
+            return aIndex - bIndex
+        })
+    }, [members, getMemberStatus])
 
     const handleUserClick = useCallback(
         async (otherUserId: string) => {
