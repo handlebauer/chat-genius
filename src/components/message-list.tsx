@@ -153,7 +153,7 @@ export function MessageList({ messages, userData }: MessageListProps) {
 
     return (
         <ScrollArea ref={scrollAreaRef} className="flex-1 mr-1">
-            <div className="p-4 pb-0 space-y-2">
+            <div className="p-4 pb-1 space-y-2">
                 {messages.map(message => (
                     <MessageItem
                         key={message.id}
