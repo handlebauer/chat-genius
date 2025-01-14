@@ -3,7 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
 import { config } from '@/config'
-import { MENTION_TEMPLATES } from '@/lib/utils/mentions'
+import { testUsers, generalMessages, aiMessages } from './data'
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -18,138 +18,7 @@ const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
 
 // Store user IDs for reference
 const userIds: { [key: string]: string } = {}
-let aiChannelId: string | null = null
 let systemUserId: string | null = null
-
-// Test users for AI discussions
-const testUsers = [
-    {
-        email: 'alice@test.com',
-        name: 'Alice (AI Engineer)',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice',
-    },
-    {
-        email: 'bob@test.com',
-        name: 'Bob (ML Researcher)',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob',
-    },
-    {
-        email: 'carol@test.com',
-        name: 'Carol (Data Scientist)',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=carol',
-    },
-]
-
-// AI discussion messages - covering highly distinct topics and language patterns
-const aiMessages = [
-    // Scientific/Technical Messages
-    {
-        content:
-            'Our quantum computing simulation achieved 99.9% accuracy in predicting molecular structures. The quantum entanglement patterns were particularly fascinating.',
-        sender: 'alice@test.com',
-    },
-    {
-        content:
-            'Breaking: Deep sea exploration robot discovered 5 new species at 11,000m depth in the Mariana Trench. Bio-luminescence patterns suggest evolutionary adaptations never seen before.',
-        sender: 'bob@test.com',
-    },
-    {
-        content:
-            'Mars colonization update: Our hydroponics AI system successfully grew wheat in simulated Martian soil under radiation conditions. First time in human history!',
-        sender: 'carol@test.com',
-    },
-    {
-        content:
-            'Breakthrough in fusion energy: Plasma containment held stable for 24 hours at 150 million degrees Celsius. This could revolutionize clean energy production.',
-        sender: 'alice@test.com',
-    },
-    // Consumer Tech/Lifestyle
-    {
-        content:
-            'My smart fridge now suggests recipes based on my fitness goals and remaining ingredients. It even ordered groceries automatically when running low!',
-        sender: 'bob@test.com',
-    },
-    {
-        content:
-            'Virtual reality therapy shows 92% success rate in treating chronic arachnophobia. Patients reported zero anxiety after just 3 sessions.',
-        sender: 'carol@test.com',
-    },
-    {
-        content: `Expanding on ${MENTION_TEMPLATES.MESSAGE('quantum-msg-1', 'CHANNEL_ID', 'ai-testing')}, we've now achieved quantum teleportation of complex molecular data. This breakthrough builds directly on our previous quantum simulation work!`,
-        sender: 'alice@test.com',
-    },
-    {
-        content:
-            'New AI-powered dating app matches people based on their dream journal entries. Early tests show 85% compatibility rate among matched couples.',
-        sender: 'alice@test.com',
-    },
-    // Environmental/Nature
-    {
-        content:
-            'Drone-based reforestation project successfully planted 1 million mangrove trees in coastal areas. Marine ecosystem showing signs of recovery.',
-        sender: 'carol@test.com',
-    },
-    {
-        content:
-            'Arctic wildlife tracking system detected previously unknown migration patterns of narwhals. Data suggests climate adaptation strategies.',
-        sender: 'alice@test.com',
-    },
-    // Arts/Culture
-    {
-        content:
-            'AI-restored ancient Egyptian hieroglyphs revealed unknown dynasty. Archaeological community is buzzing with excitement about this discovery.',
-        sender: 'bob@test.com',
-    },
-    {
-        content:
-            'Holographic museum exhibits allow visitors to walk through accurate reconstructions of ancient Rome. Time-travel tourism is finally here!',
-        sender: 'carol@test.com',
-    },
-    // Sports/Health
-    {
-        content:
-            'New biomechanical running shoes adapt to your gait in real-time. Marathon runners reported 23% less fatigue in preliminary trials.',
-        sender: 'alice@test.com',
-    },
-    {
-        content:
-            'Brain-computer interface allows completely paralyzed patients to play chess online. First tournament scheduled for next month.',
-        sender: 'bob@test.com',
-    },
-    // Education/Learning
-    {
-        content:
-            'Personalized learning algorithm reduced high school dropout rates by 47%. System adapts to individual student learning patterns and emotional states.',
-        sender: 'carol@test.com',
-    },
-    {
-        content:
-            'Language learning breakthrough: Neural implant enables instant basic comprehension of foreign languages. Clinical trials starting next year.',
-        sender: 'alice@test.com',
-    },
-    // Business/Finance
-    {
-        content:
-            'Quantum blockchain technology processed 1 million transactions per second while using 99% less energy than traditional systems.',
-        sender: 'bob@test.com',
-    },
-    {
-        content:
-            'AI-driven microinsurance program helps small farmers in developing countries protect against crop failure. Already helped 50,000 families.',
-        sender: 'carol@test.com',
-    },
-    // Entertainment/Gaming
-    {
-        content:
-            'New neural gaming headset lets you control characters with thoughts alone. Response time 500% faster than traditional controllers.',
-        sender: 'alice@test.com',
-    },
-    {
-        content:
-            'Procedurally generated virtual world reached size of actual universe. Players have discovered only 0.0001% after six months of exploration.',
-        sender: 'bob@test.com',
-    },
-]
 
 async function createSystemUser() {
     try {
@@ -202,12 +71,12 @@ async function createTestUsers() {
     }
 }
 
-async function createAIChannel() {
+async function createChannel(name: string, messages: typeof generalMessages) {
     try {
         const { data: channel, error } = await supabase
             .from('channels')
             .insert({
-                name: 'ai-testing',
+                name,
                 is_private: false,
                 channel_type: 'channel',
                 created_by: systemUserId,
@@ -216,110 +85,53 @@ async function createAIChannel() {
             .single()
 
         if (error) {
-            console.error('Failed to create AI testing channel:', error)
+            console.error(`Failed to create ${name} channel:`, error)
             return
         }
 
-        aiChannelId = channel.id
-        console.log('Created AI testing channel:', channel.id)
+        console.log(`Created ${name} channel:`, channel.id)
 
         // Add a welcome message from the system user
+        const welcomeMessage =
+            name === 'general'
+                ? 'Welcome to the general channel! 👋 Feel free to chat about anything!'
+                : 'Welcome to the AI testing channel! 🤖 This channel contains test messages for vector similarity search.'
+
         const { error: messageError } = await supabase.from('messages').insert({
             channel_id: channel.id,
-            content:
-                'Welcome to the AI testing channel! 🤖 This channel contains test messages for vector similarity search.',
+            content: welcomeMessage,
             sender_id: systemUserId,
         })
 
         if (messageError) {
             console.error('Failed to create welcome message:', messageError)
         }
-    } catch (error) {
-        console.error('Failed to create AI channel:', error)
-    }
-}
 
-async function seedAIMessages() {
-    if (!aiChannelId) {
-        console.error('AI channel ID not found')
-        return
-    }
-
-    try {
-        let quantumMessageId: string | undefined
-        const QUANTUM_REFERENCE_MESSAGE = aiMessages.find(m =>
-            m.content.includes(
-                'quantum teleportation of complex molecular data',
-            ),
-        )
-
-        // Insert all messages except the reference message
-        for (const message of aiMessages) {
+        // Add the test messages
+        for (const message of messages) {
             const senderId = userIds[message.sender]
             if (!senderId) {
                 console.warn(`No user ID found for ${message.sender}`)
                 continue
             }
 
-            // Skip the reference message
-            if (message === QUANTUM_REFERENCE_MESSAGE) {
-                continue
-            }
-
-            const { data: insertedMessage, error: messageError } =
-                await supabase
-                    .from('messages')
-                    .insert({
-                        channel_id: aiChannelId,
-                        content: message.content,
-                        sender_id: senderId,
-                        created_at: new Date().toISOString(),
-                    })
-                    .select()
-                    .single()
+            const { error: messageError } = await supabase
+                .from('messages')
+                .insert({
+                    channel_id: channel.id,
+                    content: message.content,
+                    sender_id: senderId,
+                    created_at: new Date().toISOString(),
+                })
 
             if (messageError) {
                 console.error('Failed to insert message:', messageError)
-                continue
-            }
-
-            // Store the ID of the quantum message for reference
-            if (message === aiMessages[0]) {
-                // First message is our quantum message
-                quantumMessageId = insertedMessage.id
             }
         }
 
-        // Now insert the reference message with the actual quantum message ID
-        if (quantumMessageId) {
-            const referenceMessage = {
-                content: `Expanding on ${MENTION_TEMPLATES.MESSAGE(quantumMessageId, aiChannelId, 'ai-testing')}, we've now achieved quantum teleportation of complex molecular data. This breakthrough builds directly on our previous quantum simulation work!`,
-                sender: 'alice@test.com',
-            }
-
-            const senderId = userIds[referenceMessage.sender]
-            if (senderId) {
-                const { error: messageError } = await supabase
-                    .from('messages')
-                    .insert({
-                        channel_id: aiChannelId,
-                        content: referenceMessage.content,
-                        sender_id: senderId,
-                        created_at: new Date().toISOString(),
-                    })
-
-                if (messageError) {
-                    console.error(
-                        'Failed to insert reference message:',
-                        messageError,
-                    )
-                }
-            }
-        }
-
-        console.log(`Seeded ${aiMessages.length} AI test messages`)
+        console.log(`Seeded ${messages.length} messages in ${name} channel`)
     } catch (error) {
-        console.error('Failed to seed AI messages:', error)
+        console.error(`Failed to create ${name} channel:`, error)
     }
 }
 
@@ -330,19 +142,23 @@ async function clearExistingData() {
     }
 
     try {
-        // Delete messages in ai-testing channel
-        const { data: channel } = await supabase
+        // Delete messages in both channels
+        const { data: channels } = await supabase
             .from('channels')
             .select('id')
-            .eq('name', 'ai-testing')
-            .single()
+            .in('name', ['general', 'ai-test'])
 
-        if (channel) {
+        if (channels) {
+            for (const channel of channels) {
+                await supabase
+                    .from('messages')
+                    .delete()
+                    .eq('channel_id', channel.id)
+            }
             await supabase
-                .from('messages')
+                .from('channels')
                 .delete()
-                .eq('channel_id', channel.id)
-            await supabase.from('channels').delete().eq('id', channel.id)
+                .in('name', ['general', 'ai-test'])
         }
 
         // Delete test users
@@ -365,20 +181,20 @@ export async function seedDev() {
         process.exit(1)
     }
 
-    console.log('Starting AI test data seeding...')
+    console.log('Starting test data seeding...')
 
     // Clear any existing test data
     await clearExistingData()
 
-    // Create users and channel
+    // Create users and channels
     await createSystemUser()
     await createTestUsers()
-    await createAIChannel()
 
-    // Seed messages
-    await seedAIMessages()
+    // Create both channels with their respective messages
+    await createChannel('general', generalMessages)
+    await createChannel('ai-test', aiMessages)
 
-    console.log('AI test data seeding completed!')
+    console.log('Test data seeding completed!')
 }
 
 await seedDev().catch(console.error)
