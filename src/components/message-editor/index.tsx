@@ -71,7 +71,18 @@ export function MessageEditor({
                 const cursorPos = editor.state.selection.$head.pos
                 const textBeforeCursor = content.slice(0, cursorPos)
 
-                // Show command list if cursor is right after a slash with no whitespace
+                // Check if we have a command followed by a space
+                const commandMatch = textBeforeCursor.match(/^\/(\w+)\s$/)
+                if (commandMatch) {
+                    // Directly activate the command if it exists
+                    const commandId = commandMatch[1]
+                    setShowCommandList(false)
+                    setActiveCommand(commandId)
+                    editor.commands.setContent('')
+                    return
+                }
+
+                // Show command list if cursor is right after a slash
                 if (textBeforeCursor.startsWith('/')) {
                     setShowCommandList(true)
                     setCommandText(textBeforeCursor)
