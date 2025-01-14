@@ -211,17 +211,16 @@ export function MessageEditor({
 
                 // Set loading state with the current time
                 const pendingTime = new Date().toISOString()
-                console.log('📝 Setting AI response loading:', {
-                    channelId: currentChannel.id,
-                    pendingTime,
-                })
-
                 useStore
                     .getState()
                     .setAiResponseLoading(currentChannel.id, true, pendingTime)
 
-                // Send the command
-                await handleQuestionCommand(args.question, currentChannel.id)
+                // Send the command with the correct commandId
+                await handleQuestionCommand(
+                    args.question,
+                    currentChannel.id,
+                    activeCommand,
+                )
             }
         } catch (error) {
             console.error('Error processing command:', error)
@@ -229,7 +228,6 @@ export function MessageEditor({
             useStore.getState().setAiResponseLoading(currentChannel.id, false)
         } finally {
             setIsProcessingCommand(false)
-            // Don't clear loading state here anymore - it will be cleared when the message arrives
         }
     }
 

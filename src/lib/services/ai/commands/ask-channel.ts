@@ -169,7 +169,11 @@ async function generateResponse(
     context: AICommandContext,
     systemPrompt: string,
 ): Promise<string> {
+    console.log({ relevantMessages })
+
     const messageContext = relevantMessages.map(formatMessageContext).join('\n')
+
+    console.log({ messageContext })
 
     const response = await context.openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -185,6 +189,10 @@ async function generateResponse(
         ],
         temperature: 0.7,
         max_tokens: 500,
+    })
+
+    console.log({
+        response,
     })
 
     return (

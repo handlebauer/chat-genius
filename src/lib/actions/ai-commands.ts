@@ -1,6 +1,6 @@
 'use server'
 
-import { aiService } from '@/lib/services/ai-service'
+import { aiService } from '@/lib/services/ai'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 export async function handleQuestionCommand(
     question: string,
     channelId: string,
-    // userId: string,
+    commandId: string = 'ask-channel',
 ) {
     const supabase = await createClient()
 
@@ -29,7 +29,11 @@ export async function handleQuestionCommand(
         }
 
         // Get response from AI service
-        const aiResponse = await aiService.handleQuestion(question, channelId)
+        const aiResponse = await aiService.handleCommand(
+            commandId,
+            question,
+            channelId,
+        )
 
         // Create the bot's response message
         const { error: messageError } = await supabase.from('messages').insert({

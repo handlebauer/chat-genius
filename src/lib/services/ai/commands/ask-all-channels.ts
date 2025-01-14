@@ -100,14 +100,27 @@ async function searchSimilarMessages(
         return []
     }
 
+    if (!messages || messages.length === 0) {
+        console.log(
+            'No messages found with similarity threshold:',
+            similarity_threshold,
+        )
+        return []
+    }
+
     // Get channel names for all messages
-    const { data: channels } = await context.supabase
+    const { data: channels, error: channelsError } = await context.supabase
         .from('channels')
         .select('id, name')
         .in(
             'id',
             (messages as SearchResult[]).map(msg => msg.channel_id),
         )
+
+    if (channelsError) {
+        console.error('Error fetching channels:', channelsError)
+        return messages as SearchResult[]
+    }
 
     const channelMap = (channels || []).reduce(
         (
