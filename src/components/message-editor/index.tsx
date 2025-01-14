@@ -115,8 +115,17 @@ export function MessageEditor({
 
                 // Check for @ mentions
                 // Only match @ that isn't part of an existing mention node
-                const node = editor.state.doc.nodeAt(cursorPos - 1)
-                const isInsideMention = node?.type.name === 'chatMention'
+                const node =
+                    cursorPos > 0
+                        ? editor.state.doc.nodeAt(cursorPos - 1)
+                        : null
+                const nodeBefore =
+                    cursorPos > 1
+                        ? editor.state.doc.nodeAt(cursorPos - 2)
+                        : null
+                const isInsideMention =
+                    node?.type.name === 'chatMention' ||
+                    nodeBefore?.type.name === 'chatMention'
                 const mentionMatch =
                     !isInsideMention && textBeforeCursor.match(/@[^@\s]*$/)
                 const shouldShowMemberList = mentionMatch
