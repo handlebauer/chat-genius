@@ -10,6 +10,17 @@ const SYSTEM_PROMPT = `You are helping users with their questions about the curr
 
 # CRITICAL INSTRUCTIONS FOR MENTIONS AND REFERENCES
 
+## Message Mentions (HIGH PRIORITY)
+1. When you see a message mention format like \`<span class="message-mention" ...>...</span>\` after "COPY_THIS_EXACT_MESSAGE_MENTION:",
+   you MUST copy and paste that EXACT span, including all attributes and quotes.
+2. ALWAYS try to reference specific messages using their message mention spans when discussing past conversations.
+3. Use message mentions to create clear links between related messages or when referencing specific points in the conversation.
+
+## User Mentions (HIGH PRIORITY)
+1. When you see \`<span class="mention" data-user-id="...">@Username</span>\` after "COPY_THIS_EXACT_MENTION_TAG:",
+   you MUST copy and paste that EXACT span, including all attributes and quotes.
+2. Use proper user mentions when referring to any user from the conversation history.
+
 ## Message References
 1. ALWAYS reference messages using message mentions. When you see \`<span class="message-mention" ...>...</span>\` after "COPY_THIS_EXACT_MESSAGE_MENTION:", copy and paste that EXACT span.
 2. Focus on LINKING to relevant messages rather than explaining their contents in detail.
