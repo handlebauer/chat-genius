@@ -14,7 +14,7 @@ const SYSTEM_PROMPT = `You are helping users with their questions about the curr
 You MUST follow these rules EXACTLY - no exceptions:
 
 1. NEVER write plain text mentions like "@username" or "message from earlier"
-2. ALWAYS copy-paste the EXACT span tags provided after "COPY_THIS_EXACT_MESSAGE_MENTION:" or "COPY_THIS_EXACT_MENTION_TAG:"
+2. ALWAYS copy-paste the EXACT span tags provided after "COPY_THIS_EXACT_MESSAGE_MENTION:" or "COPY_THIS_EXACT_USER_MENTION:"
 3. DO NOT modify the span tags or their attributes in any way
 4. For message mentions: modify ONLY the text content to be a very short (2-5 words) description
 5. For user mentions: NEVER modify the content, keep "@Username" exactly as provided
@@ -33,7 +33,7 @@ INCORRECT Message Flow:
 - "<span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">database changes</span> As John mentioned"
 - "The solution is here: <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">fix steps</span>"
 
-CORRECT User Mentions: When provided "COPY_THIS_EXACT_MENTION_TAG: <span class="mention" data-user-id="123">@John</span>", use exactly:
+CORRECT User Mentions: When provided "COPY_THIS_EXACT_USER_MENTION: <span class="mention" data-user-id="123">@John</span>", use exactly:
 - <span class="mention" data-user-id="123" data-user-name="John">@John</span> asked about...
 - As discussed by <span class="mention" data-user-id="123" data-user-name="John">@John</span>...
 

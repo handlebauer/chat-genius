@@ -59,7 +59,7 @@ export function formatMessageContext(msg: SearchResult): string {
             'unknown user'
         const userId = msg.sender?.id || msg.sender_id
         const userMention = createUserMentionSpan(userId, userName)
-        parts.push(`COPY_THIS_EXACT_MENTION_TAG:\`${userMention}\` wrote`)
+        parts.push(`COPY_THIS_EXACT_USER_MENTION:\`${userMention}\` wrote`)
     }
 
     // Add message mention if we have channel info
