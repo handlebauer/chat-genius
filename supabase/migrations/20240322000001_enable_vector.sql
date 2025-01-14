@@ -32,3 +32,37 @@ create index if not exists messages_embedding_vector_idx
         m = 16,        -- max number of connections per layer (default: 16)
         ef_construction = 64  -- size of the dynamic candidate list (default: 64)
     );
+
+drop function if exists match_messages;
+
+create or replace function public.match_messages (
+    query_embedding vector(1536),
+    match_threshold float default 0.7,
+    match_count int default 5
+)
+returns table (
+    id text,
+    content text,
+    channel_id text,
+    sender_id text,
+    created_at timestamptz,
+    similarity float
+)
+language plpgsql
+as $$
+begin
+    return query
+    select
+        messages.id::text,
+        messages.content,
+        messages.channel_id::text,
+        messages.sender_id::text,
+        messages.created_at,
+        1 - (messages.embedding_vector <=> query_embedding) as similarity
+    from messages
+    where messages.embedding_vector is not null
+    and 1 - (messages.embedding_vector <=> query_embedding) > match_threshold
+    order by messages.embedding_vector <=> query_embedding
+    limit match_count;
+end;
+$$;
