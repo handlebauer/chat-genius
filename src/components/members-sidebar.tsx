@@ -20,6 +20,7 @@ interface MembersSidebarProps {
         role: 'owner' | 'admin' | 'member'
     }[]
     userId: string
+    systemUserId: string
 }
 
 const getStatusColor = (status?: string) => {
@@ -33,7 +34,11 @@ const getStatusColor = (status?: string) => {
     }
 }
 
-export function MembersSidebar({ members, userId }: MembersSidebarProps) {
+export function MembersSidebar({
+    members,
+    userId,
+    systemUserId,
+}: MembersSidebarProps) {
     const router = useRouter()
 
     const { onlineUsers } = useOnlineUsers({ userId })
@@ -52,6 +57,9 @@ export function MembersSidebar({ members, userId }: MembersSidebarProps) {
 
     // Get online status for each member
     const getMemberStatus = (memberId: string) => {
+        // System user should always appear online
+        if (memberId === systemUserId) return 'online'
+
         const onlineUser = onlineUsers.find(user => user.id === memberId)
         if (!onlineUser) return 'offline'
         return onlineUser.status === 'away' || isIdle ? 'away' : 'online'

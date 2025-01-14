@@ -15,6 +15,7 @@ import { MembersSidebar } from './members-sidebar'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { JoinChannelPrompt } from './join-channel-prompt'
 import { ChannelMember, ChannelMemberships } from '@/hooks/use-chat-data'
+import { useMemo } from 'react'
 
 interface ClientSideWrapperProps {
     channelId: string
@@ -36,6 +37,14 @@ export function ClientSideWrapper({
     const { channels, directMessages, currentChannel, isHydrated } =
         useChatStore(channelId, initialData)
     const isChannelMember = useStore(state => state.isChannelMember)
+
+    const systemUserId = useMemo(
+        () =>
+            currentChannelMembers.find(
+                member => member.email === 'ai-bot@test.com',
+            )?.id || '',
+        [currentChannelMembers],
+    )
 
     if (!isHydrated || !currentChannel) {
         return null
@@ -114,6 +123,7 @@ export function ClientSideWrapper({
                         <MembersSidebar
                             members={currentChannelMembers}
                             userId={userData.id}
+                            systemUserId={systemUserId}
                         />
                     )}
             </div>
