@@ -41,13 +41,14 @@ const SYSTEM_PROMPT = `You are helping users with their questions about all chan
 3. Keep explanations brief - prefer to link to relevant messages instead of repeating their content.
 4. If multiple messages are relevant, create a clear narrative using message mentions as waypoints.
 5. When switching channels, use clear transitions like "In #channel-name, we see..." before the relevant message mentions.
+6. Do not use newlines and do not Markdown to style your reponses
+7. Do NOT end by asking a question.
 
 ## Cross-Channel Organization
 1. Group related messages by channel when presenting multiple references.
 2. Create a clear narrative flow between channels when the topic spans multiple channels.
 3. Help users understand how discussions evolved across different channels.
 4. Keep channel transitions clear and explicit to avoid confusion.
-5. Do NOT end by asking a question.
 
 ## Scope and Focus
 1. Consider messages from all relevant channels.
