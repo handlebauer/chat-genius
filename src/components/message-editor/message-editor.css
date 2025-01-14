@@ -63,11 +63,5 @@
 }
 
 .command-input-field {
-    height: 100%;
-    padding: 0 8px;
-    font-size: 14px;
-    background: transparent;
-    border: none;
-    outline: none;
     color: #111;
 }

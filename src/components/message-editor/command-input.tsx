@@ -33,6 +33,12 @@ export function CommandInput({
     const [showError, setShowError] = useState(false)
     const arg = args[0] // We only handle one argument per command for now
 
+    const inputStyle = {
+        width: values[arg.name]
+            ? `${Math.max(1, values[arg.name].length)}ch`
+            : '1px',
+    }
+
     // Reset error state after animation
     useEffect(() => {
         if (showError) {
@@ -76,8 +82,8 @@ export function CommandInput({
                 <span className="command-input-label">{arg.name}</span>
                 <input
                     type="text"
-                    className="command-input-field flex-1 w-1/2"
-                    placeholder={arg.placeholder}
+                    className="command-input-field leading-snug pr-[9px] pl-[8px] font-mono box-content m-0 overflow-visible text-left outline-none"
+                    style={inputStyle}
                     value={values[arg.name] || ''}
                     onChange={e => {
                         setValues(prev => ({
