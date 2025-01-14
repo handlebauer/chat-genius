@@ -9,9 +9,13 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { ToolbarButtons } from './toolbar-buttons'
 import { ActionButtons } from './action-buttons'
 import { FilePreview } from './file-preview'
+import { CommandList } from './command-list'
+import { CommandInput } from './command-input'
 import { Channel } from '@/lib/store'
 import type { UploadedFile } from '@/hooks/use-file-upload'
 import { sendMessage } from '@/lib/actions/send-message'
+import { handleQuestionCommand } from '@/lib/actions/ai-commands'
+import { stripHtml } from '@/components/search-results'
 
 interface MessageEditorProps {
     currentChannel: Channel
@@ -27,6 +31,10 @@ export function MessageEditor({
     const editorRef = useRef(null)
     const [, setSelectedFiles] = useState<File[]>([])
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+    const [showCommandList, setShowCommandList] = useState(false)
+    const [activeCommand, setActiveCommand] = useState<string | null>(null)
+    const [isProcessingCommand, setIsProcessingCommand] = useState(false)
+    const [commandText, setCommandText] = useState('')
 
     const getPlaceholder = () => {
         if (currentChannel.channel_type === 'direct_message') {
@@ -50,6 +58,27 @@ export function MessageEditor({
                 attributes: {
                     class: 'w-full text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto min-h-[24px] max-h-[200px]',
                 },
+                handleKeyDown: (view, event) => {
+                    // Prevent Enter key from creating newlines unless Shift is pressed
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                        return true // Return true to prevent the default behavior
+                    }
+                    return false
+                },
+            },
+            onUpdate: ({ editor }) => {
+                const content = editor.getText()
+                const cursorPos = editor.state.selection.$head.pos
+                const textBeforeCursor = content.slice(0, cursorPos)
+
+                // Show command list if cursor is right after a slash with no whitespace
+                if (textBeforeCursor.startsWith('/')) {
+                    setShowCommandList(true)
+                    setCommandText(textBeforeCursor)
+                } else {
+                    setShowCommandList(false)
+                    setCommandText('')
+                }
             },
             immediatelyRender: false,
         },
@@ -57,25 +86,68 @@ export function MessageEditor({
     )
 
     const handleKeyDown = useCallback(
-        (event: KeyboardEvent) => {
+        async (event: KeyboardEvent) => {
+            // If command list is shown, let the CommandList component handle keyboard events
+            if (showCommandList) {
+                return
+            }
+
+            // If command input is active, let it handle its own keyboard events
+            if (activeCommand) {
+                return
+            }
+
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()
-                if (!editor?.isEmpty || uploadedFiles.length > 0) {
-                    const content = editor?.getHTML() || ''
-                    sendMessage(
-                        content,
-                        userId,
-                        currentChannel.id,
-                        uploadedFiles,
-                    )
-                    editor?.commands.clearContent()
-                    setSelectedFiles([])
-                    setUploadedFiles([])
+                event.stopPropagation()
+
+                // Check if content is empty or just whitespace after stripping HTML
+                const content = editor?.getHTML() || ''
+                const strippedContent = stripHtml(content)
+                if (strippedContent === '' && uploadedFiles.length === 0) {
+                    return
                 }
+
+                // Normal message sending
+                sendMessage(content, userId, currentChannel.id, uploadedFiles)
+                editor?.commands.clearContent()
+                setSelectedFiles([])
+                setUploadedFiles([])
+            } else if (event.key === 'Escape') {
+                setShowCommandList(false)
+                setActiveCommand(null)
             }
         },
-        [editor, sendMessage, uploadedFiles],
+        [editor, sendMessage, uploadedFiles, showCommandList, activeCommand],
     )
+
+    const handleCommandSelect = (commandId: string) => {
+        setActiveCommand(commandId)
+        setShowCommandList(false)
+        editor?.commands.setContent('')
+    }
+
+    const handleCommandSubmit = async (args: { [key: string]: string }) => {
+        if (isProcessingCommand) return
+        setIsProcessingCommand(true)
+
+        try {
+            if (activeCommand === 'ask') {
+                await handleQuestionCommand(args.question, currentChannel.id)
+            }
+        } catch (error) {
+            console.error('Error processing command:', error)
+        } finally {
+            setIsProcessingCommand(false)
+            setActiveCommand(null)
+            editor?.commands.focus()
+        }
+    }
+
+    const handleCommandCancel = () => {
+        setActiveCommand(null)
+        editor?.commands.focus()
+    }
 
     const handleSend = useCallback(() => {
         if (!editor?.isEmpty || uploadedFiles.length > 0) {
@@ -124,16 +196,31 @@ export function MessageEditor({
                 onClick={handleContainerClick}
             >
                 {editor && (
-                    <div className="flex flex-col">
+                    <div className="message-editor-container">
+                        {showCommandList && (
+                            <CommandList
+                                isOpen={showCommandList}
+                                onSelect={handleCommandSelect}
+                                commandText={commandText}
+                            />
+                        )}
                         <ToolbarButtons editor={editor} />
-                        <div className="px-3 py-2">
-                            <div
-                                className="flex-1"
-                                ref={editorRef}
-                                onKeyDown={handleKeyDown}
-                            >
-                                <EditorContent editor={editor} />
-                            </div>
+                        <div className="message-editor-input">
+                            {activeCommand ? (
+                                <CommandInput
+                                    commandId={activeCommand}
+                                    onSubmit={handleCommandSubmit}
+                                    onCancel={handleCommandCancel}
+                                />
+                            ) : (
+                                <div
+                                    className="flex-1"
+                                    ref={editorRef}
+                                    onKeyDown={handleKeyDown}
+                                >
+                                    <EditorContent editor={editor} />
+                                </div>
+                            )}
                         </div>
                         <FilePreview
                             files={uploadedFiles}

@@ -5,7 +5,7 @@ function escapeRegExp(string: string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function stripHtml(html: string): string {
+export function stripHtml(html: string): string {
     // First replace common block elements with spaces to preserve readability
     const withLineBreaks = html.replace(/<\/(p|div|br)>/gi, ' ')
     // Strip all remaining HTML tags

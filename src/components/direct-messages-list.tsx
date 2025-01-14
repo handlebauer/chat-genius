@@ -89,8 +89,6 @@ export function DirectMessagesList({
     const { isIdle } = useIdleDetection()
     const router = useRouter()
 
-    console.log('directMessages', directMessages)
-
     // Extract unique user IDs from DM channel names
     const dmUserIds = useMemo(() => {
         const userIds = new Set<string>()

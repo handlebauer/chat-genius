@@ -1,7 +1,73 @@
+/* Base editor styles */
+.message-editor-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 24px;
+    max-height: 200px;
+}
+
+.message-editor-input {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 8px 12px;
+    gap: 8px;
+}
+
+/* Placeholder styles */
 .tiptap p.is-editor-empty:first-child::before {
     color: #9ca3af;
     content: attr(data-placeholder);
     float: left;
     height: 0;
     pointer-events: none;
+}
+
+/* Command Input Styles */
+.command-input {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0;
+    gap: 8px;
+}
+
+.command-input-container {
+    display: flex;
+    margin-top: -3px;
+    align-items: start;
+    height: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    background: white;
+}
+
+.command-input-prefix {
+    display: flex;
+    align-items: start;
+    height: 24px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.command-input-label {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 8px;
+    font-size: 14px;
+    background: hsla(220, 13%, 91%, 0.4);
+    border-right: 1px solid #e5e7eb;
+    color: #23272e;
+}
+
+.command-input-field {
+    height: 100%;
+    padding: 0 8px;
+    font-size: 14px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #111;
 }
