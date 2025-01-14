@@ -106,12 +106,14 @@
 }
 
 .mention-text {
-    color: rgb(var(--primary));
-    background-color: rgba(var(--primary), 0.1);
+    color: rgb(64, 64, 64);
+    background-color: rgb(245, 245, 245);
     border-radius: 4px;
-    padding: 0 4px;
-    font-weight: 500;
+    padding: 0 1px;
+    font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgb(229, 229, 229);
 }
 
 .mention-text:hover {

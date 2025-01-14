@@ -20,13 +20,15 @@ export function formatMentionText(
     content: string,
     users: Record<string, User>,
 ): string {
-    // Replace mention spans with highlighted text for display
+    // Replace mention spans with highlighted text while preserving all mention attributes
     return content.replace(
         /<span class="mention" data-user-id="([^"]+)">@([^<]+)<\/span>/g,
         (_, userId) => {
             const user = users[userId]
             if (!user) return `@unknown-user`
-            return `<span class="mention-text">@${user.name || user.email.split('@')[0]}</span>`
+            const displayName = user.name || user.email.split('@')[0]
+            // Keep all mention attributes and add mention-text class
+            return `<span class="mention mention-text" data-user-id="${userId}" data-name="${displayName}">@${displayName}</span>`
         },
     )
 }

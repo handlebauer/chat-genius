@@ -7,6 +7,11 @@ interface SearchResult {
     content: string
     channel_id: string
     sender_id: string
+    sender?: {
+        id: string
+        name: string | null
+        email: string
+    }
     created_at: string
     similarity: number
 }
@@ -16,7 +21,52 @@ interface AIResponse {
     relevantMessages?: SearchResult[]
 }
 
-// Add logging utility at the top after imports
+// Utility functions for date formatting
+function formatRelativeTime(date: Date): string {
+    const now = new Date()
+    const timeDiff = now.getTime() - date.getTime()
+    const secondsDiff = Math.floor(timeDiff / 1000)
+    const minutesDiff = Math.floor(secondsDiff / 60)
+    const hoursDiff = Math.floor(minutesDiff / 60)
+    const daysDiff = Math.floor(hoursDiff / 24)
+
+    if (daysDiff === 0) {
+        if (hoursDiff === 0) {
+            if (minutesDiff === 0) {
+                return 'just now'
+            }
+            return `${minutesDiff} minutes ago`
+        }
+        return `${hoursDiff} hours ago`
+    } else if (daysDiff === 1) {
+        return 'yesterday'
+    } else if (daysDiff < 7) {
+        return `${daysDiff} days ago`
+    }
+
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: now.getFullYear() !== date.getFullYear() ? 'numeric' : undefined,
+    })
+}
+
+// Utility functions for mention formatting
+function createMentionSpan(userId: string, userName: string): string {
+    return `<span class="mention mention-text" data-user-id="${userId}" data-name="${userName}">@${userName}</span>`
+}
+
+function formatMessageContext(msg: SearchResult): string {
+    const userName =
+        msg.sender?.name || msg.sender?.email?.split('@')[0] || 'unknown user'
+    const userId = msg.sender?.id || msg.sender_id
+    const dateInfo = formatRelativeTime(new Date(msg.created_at))
+    const mentionSpan = createMentionSpan(userId, userName)
+
+    return `[Previous Message (${dateInfo})] COPY_THIS_EXACT_MENTION_TAG:\`${mentionSpan}\` wrote: ${msg.content} (Similarity: ${(msg.similarity * 100).toFixed(1)}%)`
+}
+
+// Logging utility
 const log = {
     info: (msg: string) => console.log(`\x1b[36m○\x1b[0m ${msg}`),
     warn: (msg: string) => console.log(`\x1b[33m⚠\x1b[0m ${msg}`),
@@ -39,17 +89,43 @@ const log = {
     },
 }
 
+// System prompt for the AI
+const SYSTEM_PROMPT = `You are helping users with their questions about the current channel.
+
+CRITICAL INSTRUCTION ABOUT MENTIONS:
+When you see \`<span class="mention" data-user-id="...">@Username</span>\` in the context after "COPY_THIS_EXACT_MENTION_TAG:",
+you MUST copy and paste that EXACT span, including all attributes and quotes, when referring to that user.
+These spans contain critical metadata that must be preserved exactly as they appear between the backticks.
+
+Other instructions:
+1. Use the context provided from previous messages in your response.
+2. Include timing information naturally in your responses (e.g., "yesterday", "2 hours ago", "last week", etc.).
+3. Include specific dates naturally when relevant (e.g., "on March 15th", "back in January", etc.).
+4. Don't take the context as fact; you are simply using it to help answer the user's question.
+5. If the context isn't similar enough, tell the user that you don't know the answer.
+6. You don't need to offer help with general questions; only answer questions about the current channel.
+
+Here is the relevant context from previous messages in the channel:
+{context}
+
+Example of how to use mentions in your response:
+If you see: COPY_THIS_EXACT_MENTION_TAG:\`<span class="mention" data-user-id="123">@John</span>\`
+You should copy exactly: <span class="mention" data-user-id="123">@John</span> in your response.
+
+Remember:
+- Copy mention spans EXACTLY as they appear between backticks - this is critical for the chat system to work
+- Include timing information and specific dates naturally
+- Combine multiple related messages from the same user when it makes sense`
+
 export class AIService {
     private openai: OpenAI
     private supabase: ReturnType<typeof createClient<Database>>
 
     constructor() {
-        // Initialize OpenAI client
         this.openai = new OpenAI({
             apiKey: process.env.OPENAI_API_KEY,
         })
 
-        // Initialize Supabase client
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const supabaseServiceKey =
             process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
@@ -61,9 +137,6 @@ export class AIService {
         this.supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
     }
 
-    /**
-     * Generate an embedding for the given text using OpenAI's text-embedding-3-small model
-     */
     private async generateEmbedding(text: string): Promise<number[]> {
         const response = await this.openai.embeddings.create({
             model: 'text-embedding-3-small',
@@ -74,9 +147,6 @@ export class AIService {
         return response.data[0].embedding
     }
 
-    /**
-     * Search for similar messages in the channel's history
-     */
     private async searchSimilarMessages(
         embedding: number[],
         channelId: string,
@@ -98,39 +168,50 @@ export class AIService {
         }
 
         // Filter messages to only include those from the current channel
-        return (messages as SearchResult[]).filter(
+        const filteredMessages = (messages as SearchResult[]).filter(
             msg => msg.channel_id === channelId,
         )
+
+        return await this.enrichMessagesWithSenderInfo(filteredMessages)
     }
 
-    /**
-     * Generate a response using GPT-4 Turbo with context from similar messages
-     */
+    private async enrichMessagesWithSenderInfo(
+        messages: SearchResult[],
+    ): Promise<SearchResult[]> {
+        const senderIds = [...new Set(messages.map(msg => msg.sender_id))]
+        const { data: users } = await this.supabase
+            .from('users')
+            .select('id, name, email')
+            .in('id', senderIds)
+
+        if (!users) return messages
+
+        const userMap = users.reduce(
+            (acc, user) => ({
+                ...acc,
+                [user.id]: user,
+            }),
+            {} as Record<string, (typeof users)[0]>,
+        )
+
+        return messages.map(msg => ({
+            ...msg,
+            sender: userMap[msg.sender_id],
+        }))
+    }
+
     private async generateResponse(
         question: string,
         relevantMessages: SearchResult[],
     ): Promise<string> {
-        // Format context from relevant messages
-        const context = relevantMessages
-            .map(
-                msg =>
-                    `[Previous Message]: ${msg.content} (Similarity: ${(msg.similarity * 100).toFixed(1)}%)`,
-            )
-            .join('\n')
+        const context = relevantMessages.map(formatMessageContext).join('\n')
 
         const response = await this.openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
                 {
                     role: 'system',
-                    content: `You are helping users with their questions about the current channel.
-                    1. Use the context provided from previous messages in your response.
-                    2. Don't take the context as fact; you are simply using it to help answer the user's question.
-                    3. If the context isn't similar enough, tell the user that you don't know the answer.
-                    4. You don't need to offer help with general questions; only answer questions about the current channel.
-
-                    Here is the relevant context from previous messages in the channel:
-                    ${context}`,
+                    content: SYSTEM_PROMPT.replace('{context}', context),
                 },
                 {
                     role: 'user',
@@ -147,9 +228,6 @@ export class AIService {
         )
     }
 
-    /**
-     * Handle a question command from a user
-     */
     public async handleQuestion(
         question: string,
         channelId: string,
@@ -157,19 +235,14 @@ export class AIService {
         try {
             log.info(`Processing question: "${question}"`)
 
-            // Generate embedding for the question
             const embedding = await this.generateEmbedding(question)
-
-            // Search for relevant messages in the channel
             const relevantMessages = await this.searchSimilarMessages(
                 embedding,
                 channelId,
             )
 
-            // Log the context being used
             log.context(relevantMessages)
 
-            // Generate response using GPT-4 with context
             const response = await this.generateResponse(
                 question,
                 relevantMessages,
