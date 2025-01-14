@@ -50,11 +50,18 @@ interface MessagesState {
     messages: Record<string, Message[]> // Keyed by channel_id
     messagesLoading: Record<string, boolean> // Loading state for each channel
     selectedMessageId: string | null // Track selected message for scrolling
+    aiResponseLoading: Record<string, boolean> // Track AI response loading state per channel
+    pendingAiMessageTime: Record<string, string> // Track timestamp of pending AI message per channel
     addMessage: (channelId: string | undefined, message: Message) => void
     setMessages: (channelId: string | undefined, messages: Message[]) => void
     setMessagesLoading: (
         channelId: string | undefined,
         loading: boolean,
+    ) => void
+    setAiResponseLoading: (
+        channelId: string | undefined,
+        loading: boolean,
+        pendingMessageTime?: string,
     ) => void
     selectMessage: (messageId: string | null) => void
     getMessageById: (
@@ -116,14 +123,44 @@ export const useStore = create<Store>((set, get) => ({
     messages: {},
     messagesLoading: {},
     selectedMessageId: null,
+    aiResponseLoading: {},
+    pendingAiMessageTime: {},
     addMessage: (channelId, message) => {
         if (typeof channelId !== 'string') return
-        set(state => ({
-            messages: {
-                ...state.messages,
-                [channelId]: [...(state.messages[channelId] || []), message],
-            },
-        }))
+
+        // Check if this message matches our pending AI message
+        const pendingTime = get().pendingAiMessageTime[channelId]
+        if (pendingTime && message.sender.email === 'ai-bot@test.com') {
+            // Clear loading state and pending time when we receive any AI message
+            set(state => ({
+                messages: {
+                    ...state.messages,
+                    [channelId]: [
+                        ...(state.messages[channelId] || []),
+                        message,
+                    ],
+                },
+                aiResponseLoading: {
+                    ...state.aiResponseLoading,
+                    [channelId]: false,
+                },
+                pendingAiMessageTime: {
+                    ...state.pendingAiMessageTime,
+                    [channelId]: '',
+                },
+            }))
+        } else {
+            // Normal message addition
+            set(state => ({
+                messages: {
+                    ...state.messages,
+                    [channelId]: [
+                        ...(state.messages[channelId] || []),
+                        message,
+                    ],
+                },
+            }))
+        }
     },
     setMessages: (channelId, messages) => {
         if (typeof channelId !== 'string') return
@@ -141,6 +178,23 @@ export const useStore = create<Store>((set, get) => ({
                 ...state.messagesLoading,
                 [channelId]: loading,
             },
+        }))
+    },
+    setAiResponseLoading: (channelId, loading, pendingMessageTime) => {
+        if (typeof channelId !== 'string') return
+        set(state => ({
+            aiResponseLoading: {
+                ...state.aiResponseLoading,
+                [channelId]: loading,
+            },
+            ...(pendingMessageTime
+                ? {
+                      pendingAiMessageTime: {
+                          ...state.pendingAiMessageTime,
+                          [channelId]: pendingMessageTime,
+                      },
+                  }
+                : {}),
         }))
     },
     selectMessage: messageId => set({ selectedMessageId: messageId }),

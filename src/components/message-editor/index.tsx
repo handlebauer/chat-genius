@@ -4,7 +4,7 @@ import './message-editor.css'
 
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useCallback, useRef, KeyboardEvent, useState } from 'react'
+import { useCallback, useRef, KeyboardEvent, useState, useEffect } from 'react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ToolbarButtons } from './toolbar-buttons'
 import { ActionButtons } from './action-buttons'
@@ -16,6 +16,7 @@ import type { UploadedFile } from '@/hooks/use-file-upload'
 import { sendMessage } from '@/lib/actions/send-message'
 import { handleQuestionCommand } from '@/lib/actions/ai-commands'
 import { stripHtml } from '@/components/search-results'
+import { useStore } from '@/lib/store'
 
 interface MessageEditorProps {
     currentChannel: Channel
@@ -53,7 +54,7 @@ export function MessageEditor({
                 }),
             ],
             content: '',
-            autofocus: true,
+            autofocus: 'end',
             editorProps: {
                 attributes: {
                     class: 'w-full text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto min-h-[24px] max-h-[200px]',
@@ -91,10 +92,20 @@ export function MessageEditor({
                     setCommandText('')
                 }
             },
-            immediatelyRender: false,
         },
         [currentChannel.name, dmParticipant],
     )
+
+    // Ensure editor is focused when it's ready
+    useEffect(() => {
+        if (editor && !activeCommand) {
+            // Small delay to ensure the editor is fully initialized
+            const timeoutId = setTimeout(() => {
+                editor.commands.focus('end')
+            }, 0)
+            return () => clearTimeout(timeoutId)
+        }
+    }, [editor, activeCommand])
 
     const handleKeyDown = useCallback(
         async (event: KeyboardEvent) => {
@@ -144,14 +155,31 @@ export function MessageEditor({
 
         try {
             if (activeCommand === 'ask') {
+                // Clear the command input immediately
+                setActiveCommand(null)
+                editor?.commands.focus()
+
+                // Set loading state with the current time
+                const pendingTime = new Date().toISOString()
+                console.log('📝 Setting AI response loading:', {
+                    channelId: currentChannel.id,
+                    pendingTime,
+                })
+
+                useStore
+                    .getState()
+                    .setAiResponseLoading(currentChannel.id, true, pendingTime)
+
+                // Send the command
                 await handleQuestionCommand(args.question, currentChannel.id)
             }
         } catch (error) {
             console.error('Error processing command:', error)
+            // Clear loading state on error
+            useStore.getState().setAiResponseLoading(currentChannel.id, false)
         } finally {
             setIsProcessingCommand(false)
-            setActiveCommand(null)
-            editor?.commands.focus()
+            // Don't clear loading state here anymore - it will be cleared when the message arrives
         }
     }
 
