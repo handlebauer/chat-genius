@@ -6,7 +6,7 @@ import type { Database } from '@/lib/supabase/types'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import {
     parseMentions,
-    aggregateMentionedUserIds,
+    getMentionedUserIds,
     formatMentionText,
 } from '@/lib/utils/mentions'
 
@@ -19,6 +19,8 @@ type MessageRow = {
     created_at: string
     updated_at: string
 }
+
+type Channel = Database['public']['Tables']['channels']['Row']
 
 interface ThreadReply {
     id: string
@@ -77,7 +79,81 @@ export function useRealTimeMessages(channelId: string) {
         async function loadMessages() {
             setMessagesLoading(channelId, true)
 
-            // First, get all threads in this channel to map parent messages
+            // Get all messages with their basic data
+            const { data: messagesData, error: messagesError } = await supabase
+                .from('messages')
+                .select(
+                    `
+                    id,
+                    content,
+                    created_at,
+                    channel_id,
+                    sender:users!messages_sender_id_fkey(
+                        id,
+                        name,
+                        email,
+                        avatar_url,
+                        status,
+                        created_at,
+                        updated_at
+                    ),
+                    attachments(
+                        id,
+                        file_name,
+                        file_size,
+                        file_type,
+                        storage_path,
+                        content_type,
+                        created_at,
+                        updated_at
+                    ),
+                    reactions(
+                        emoji,
+                        user_id
+                    )
+                `,
+                )
+                .eq('channel_id', channelId)
+                .is('thread_id', null)
+                .order('created_at')
+
+            if (messagesError) {
+                console.error('Error loading messages:', messagesError)
+                setMessagesLoading(channelId, false)
+                return
+            }
+
+            if (!messagesData) {
+                setMessagesLoading(channelId, false)
+                return
+            }
+
+            // Get all channels for message mentions
+            const { data: channelsData } = await supabase
+                .from('channels')
+                .select('*')
+
+            // Create a map of channel IDs to their data
+            const channelsMap = (channelsData || []).reduce(
+                (acc, channel) => {
+                    if (channel.id) acc[channel.id] = channel
+                    return acc
+                },
+                {} as Record<string, Channel>,
+            )
+
+            // Create a map of message IDs to their data for mentions
+            const messageMap = messagesData.reduce(
+                (acc, msg) => {
+                    if (msg.id && msg.channel_id) {
+                        acc[msg.id] = { id: msg.id, channelId: msg.channel_id }
+                    }
+                    return acc
+                },
+                {} as Record<string, { id: string; channelId: string }>,
+            )
+
+            // Then get all threads in this channel to map parent messages
             const { data: threadsData } = await supabase
                 .from('threads')
                 .select(
@@ -127,145 +203,100 @@ export function useRealTimeMessages(channelId: string) {
                 }) || [],
             )
 
-            // Then get all messages with their basic data
-            const { data: messagesData, error: messagesError } = await supabase
-                .from('messages')
-                .select(
-                    `
-          id,
-          content,
-          created_at,
-          channel_id,
-          sender:users!messages_sender_id_fkey(
-            id,
-            name,
-            email,
-            avatar_url,
-            status,
-            created_at,
-            updated_at
-          ),
-          attachments(
-            id,
-            file_name,
-            file_size,
-            file_type,
-            storage_path,
-            content_type,
-            created_at,
-            updated_at
-          ),
-          reactions(
-            emoji,
-            user_id
-          )
-        `,
-                )
-                .eq('channel_id', channelId as string)
-                .is('thread_id', null)
-                .order('created_at')
+            // Fetch mentioned users data
+            const mentionedUserIds = getMentionedUserIds(messagesData)
+            let mentionedUsers: Record<
+                string,
+                Database['public']['Tables']['users']['Row']
+            > = {}
 
-            if (messagesError) {
-                console.error('Error loading messages:', messagesError)
-                setMessagesLoading(channelId, false)
-                return
-            }
+            if (mentionedUserIds.length > 0) {
+                const { data: users } = await supabase
+                    .from('users')
+                    .select(
+                        'id, name, email, avatar_url, status, created_at, updated_at',
+                    )
+                    .in('id', mentionedUserIds)
 
-            if (messagesData) {
-                // Fetch mentioned users data
-                const mentionedUserIds = aggregateMentionedUserIds(messagesData)
-                let mentionedUsers: Record<
-                    string,
-                    Database['public']['Tables']['users']['Row']
-                > = {}
-
-                if (mentionedUserIds.length > 0) {
-                    const { data: users } = await supabase
-                        .from('users')
-                        .select(
-                            'id, name, email, avatar_url, status, created_at, updated_at',
-                        )
-                        .in('id', mentionedUserIds)
-
-                    if (users) {
-                        mentionedUsers = users.reduce(
-                            (acc, user) => {
-                                acc[user.id] = user
-                                return acc
-                            },
-                            {} as Record<
-                                string,
-                                Database['public']['Tables']['users']['Row']
-                            >,
-                        )
-                        // Add mentioned users to the global store
-                        addMentionedUsers(mentionedUsers)
-                    }
+                if (users) {
+                    mentionedUsers = users.reduce(
+                        (acc, user) => {
+                            acc[user.id] = user
+                            return acc
+                        },
+                        {} as Record<
+                            string,
+                            Database['public']['Tables']['users']['Row']
+                        >,
+                    )
+                    // Add mentioned users to the global store
+                    addMentionedUsers(mentionedUsers)
                 }
-
-                // Combine messages with their thread data and format mentions
-                const messagesWithThreadsAndReactions = messagesData.map(
-                    message => {
-                        // Process reactions
-                        const reactionGroups = (message.reactions || []).reduce(
-                            (
-                                acc: Record<
-                                    string,
-                                    { count: number; users: string[] }
-                                >,
-                                reaction: any,
-                            ) => {
-                                if (
-                                    !reaction ||
-                                    !reaction.emoji ||
-                                    reaction.user_id === null
-                                )
-                                    return acc
-
-                                if (!acc[reaction.emoji]) {
-                                    acc[reaction.emoji] = {
-                                        count: 0,
-                                        users: [],
-                                    }
-                                }
-                                acc[reaction.emoji].count++
-                                acc[reaction.emoji].users.push(reaction.user_id)
-                                return acc
-                            },
-                            {},
-                        )
-
-                        const reactions = Object.entries(reactionGroups).map(
-                            ([emoji, data]) => {
-                                const hasReacted =
-                                    data.users.includes(currentUserId)
-                                return {
-                                    emoji,
-                                    count: data.count,
-                                    hasReacted,
-                                }
-                            },
-                        )
-
-                        // Format mentions with user data
-                        const formattedContent = formatMentionText(
-                            message.content,
-                            mentionedUsers,
-                        )
-
-                        return {
-                            ...message,
-                            content: formattedContent,
-                            sender: message.sender as unknown as Database['public']['Tables']['users']['Row'],
-                            thread: threadMap.get(message.id),
-                            reactions,
-                        }
-                    },
-                ) as unknown as Message[]
-
-                setMessages(channelId, messagesWithThreadsAndReactions)
             }
 
+            // Combine messages with their thread data and format mentions
+            const messagesWithThreadsAndReactions = messagesData.map(
+                message => {
+                    // Process reactions
+                    const reactionGroups = (message.reactions || []).reduce(
+                        (
+                            acc: Record<
+                                string,
+                                { count: number; users: string[] }
+                            >,
+                            reaction: any,
+                        ) => {
+                            if (
+                                !reaction ||
+                                !reaction.emoji ||
+                                reaction.user_id === null
+                            )
+                                return acc
+
+                            if (!acc[reaction.emoji]) {
+                                acc[reaction.emoji] = {
+                                    count: 0,
+                                    users: [],
+                                }
+                            }
+                            acc[reaction.emoji].count++
+                            acc[reaction.emoji].users.push(reaction.user_id)
+                            return acc
+                        },
+                        {},
+                    )
+
+                    const reactions = Object.entries(reactionGroups).map(
+                        ([emoji, data]) => {
+                            const hasReacted =
+                                data.users.includes(currentUserId)
+                            return {
+                                emoji,
+                                count: data.count,
+                                hasReacted,
+                            }
+                        },
+                    )
+
+                    // Format mentions with user and channel data
+                    const formattedContent = formatMentionText(
+                        message.content,
+                        mentionedUsers,
+                        messageMap,
+                        channelsMap,
+                    )
+
+                    return {
+                        ...message,
+                        content: formattedContent,
+                        sender: message.sender as unknown as Database['public']['Tables']['users']['Row'],
+                        thread: threadMap.get(message.id),
+                        reactions,
+                    }
+                },
+            ) as unknown as Message[]
+
+            setMessages(channelId, messagesWithThreadsAndReactions)
             setMessagesLoading(channelId, false)
         }
 
@@ -405,16 +436,16 @@ export function useRealTimeMessages(channelId: string) {
 
                         if (messageData) {
                             // Handle mentions in the new message
-                            const mentionedUserIds = parseMentions(
+                            const { userIds } = parseMentions(
                                 messageData.content,
                             )
-                            if (mentionedUserIds.length > 0) {
+                            if (userIds.length > 0) {
                                 const { data: users } = await supabase
                                     .from('users')
                                     .select(
                                         'id, name, email, avatar_url, status, created_at, updated_at',
                                     )
-                                    .in('id', mentionedUserIds)
+                                    .in('id', userIds)
 
                                 if (users) {
                                     const mentionedUsers = users.reduce(

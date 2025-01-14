@@ -60,6 +60,38 @@ export function MessageList({ messages, userData }: MessageListProps) {
         setShouldScrollToBottom,
     })
 
+    // Add scroll listener to detect when user is near bottom
+    useEffect(() => {
+        const scrollArea = scrollAreaRef.current
+        if (!scrollArea) return
+
+        const handleScroll = () => {
+            const { scrollTop, scrollHeight, clientHeight } = scrollArea
+            const isNearBottom = scrollHeight - (scrollTop + clientHeight) < 100
+            if (isNearBottom && !shouldScrollToBottom) {
+                setShouldScrollToBottom(true)
+            }
+        }
+
+        scrollArea.addEventListener('scroll', handleScroll)
+        return () => scrollArea.removeEventListener('scroll', handleScroll)
+    }, [scrollAreaRef, shouldScrollToBottom, setShouldScrollToBottom])
+
+    // Reset shouldScrollToBottom when selection is cleared
+    useEffect(() => {
+        if (!selectedMessageId) {
+            const scrollArea = scrollAreaRef.current
+            if (scrollArea) {
+                const { scrollTop, scrollHeight, clientHeight } = scrollArea
+                const isNearBottom =
+                    scrollHeight - (scrollTop + clientHeight) < 100
+                if (isNearBottom) {
+                    setShouldScrollToBottom(true)
+                }
+            }
+        }
+    }, [selectedMessageId, scrollAreaRef])
+
     // Scroll to bottom when loading indicator appears
     useEffect(() => {
         if (activeChannelId && aiResponseLoading[activeChannelId]) {

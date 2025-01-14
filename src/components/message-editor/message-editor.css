@@ -37,7 +37,7 @@
     margin-top: -3px;
     align-items: start;
     height: 24px;
-    border: 1px solid;
+    border: 1px solid #e5e5e5;
     border-radius: 4px;
     overflow: hidden;
     background: transparent;
@@ -45,7 +45,7 @@
 }
 
 .command-input-container:focus-within {
-    border-color: #4a90e2;
+    border-color: #222;
 }
 
 .command-input-prefix {
@@ -65,9 +65,13 @@
     padding: 0 8px;
     font-size: 14px;
     background: transparent;
-    border-right: 1px solid #4a90e2;
+    border-right: 1px solid #e5e5e5;
     color: #1f2937;
     letter-spacing: -0.01em;
+}
+
+.command-input-container:focus-within .command-input-label {
+    border-right-color: #222;
 }
 
 .command-input-field {
@@ -79,6 +83,10 @@
 .command-input-container.error {
     animation: shake 0.2s ease-in-out 0s 2;
     border-color: #ef4444;
+}
+
+.command-input-container.error .command-input-label {
+    border-right-color: #ef4444;
 }
 
 @keyframes shake {
@@ -118,4 +126,43 @@
 
 .mention-text:hover {
     background-color: rgba(var(--primary), 0.2);
+}
+
+/* Message mention styles */
+.message-mention {
+    color: rgb(37, 99, 235);
+    background-color: rgb(239, 246, 255);
+    display: inline-flex;
+    border-radius: 4px;
+    padding: 0 1px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgb(219, 234, 254);
+}
+
+.message-mention:hover {
+    background-color: rgb(219, 234, 254);
+    border-color: rgb(191, 219, 254);
+}
+
+.message-mention-text {
+    color: rgb(37, 99, 235);
+    background-color: rgb(239, 246, 255);
+    border-radius: 4px;
+    padding: 0 1px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgb(219, 234, 254);
+}
+
+.message-mention-text:hover {
+    background-color: rgb(219, 234, 254);
+    border-color: rgb(191, 219, 254);
+}
+
+.message-mention-icon {
+    width: 16px;
+    height: 21px;
 }

@@ -29,14 +29,14 @@ export async function sendMessage(
     if (messageError) throw messageError
 
     // Handle mentions
-    const mentionedUserIds = parseMentions(content)
-    if (mentionedUserIds.length > 0) {
+    const { userIds } = parseMentions(content)
+    if (userIds.length > 0) {
         // Verify these users exist and are members of the channel
         const { data: validUsers } = await supabase
             .from('channel_members')
             .select('user_id')
             .eq('channel_id', channelId)
-            .in('user_id', mentionedUserIds)
+            .in('user_id', userIds)
 
         if (validUsers) {
             const validUserIds = validUsers.map(u => u.user_id)

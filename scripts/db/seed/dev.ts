@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
 import { config } from '@/config'
+import { MENTION_TEMPLATES } from '@/lib/utils/mentions'
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -74,14 +75,13 @@ const aiMessages = [
         sender: 'carol@test.com',
     },
     {
-        content:
-            'New AI-powered dating app matches people based on their dream journal entries. Early tests show 85% compatibility rate among matched couples.',
+        content: `Expanding on ${MENTION_TEMPLATES.MESSAGE('quantum-msg-1', 'CHANNEL_ID', 'ai-testing')}, we've now achieved quantum teleportation of complex molecular data. This breakthrough builds directly on our previous quantum simulation work!`,
         sender: 'alice@test.com',
     },
     {
         content:
-            'Revolutionary smart fabric can change colors and patterns on demand. Fashion designers are already planning dynamic clothing lines for 2024.',
-        sender: 'bob@test.com',
+            'New AI-powered dating app matches people based on their dream journal entries. Early tests show 85% compatibility rate among matched couples.',
+        sender: 'alice@test.com',
     },
     // Environmental/Nature
     {
@@ -246,6 +246,14 @@ async function seedAIMessages() {
     }
 
     try {
+        let quantumMessageId: string | undefined
+        const QUANTUM_REFERENCE_MESSAGE = aiMessages.find(m =>
+            m.content.includes(
+                'quantum teleportation of complex molecular data',
+            ),
+        )
+
+        // Insert all messages except the reference message
         for (const message of aiMessages) {
             const senderId = userIds[message.sender]
             if (!senderId) {
@@ -253,17 +261,59 @@ async function seedAIMessages() {
                 continue
             }
 
-            const { error: messageError } = await supabase
-                .from('messages')
-                .insert({
-                    channel_id: aiChannelId,
-                    content: message.content,
-                    sender_id: senderId,
-                    created_at: new Date().toISOString(),
-                })
+            // Skip the reference message
+            if (message === QUANTUM_REFERENCE_MESSAGE) {
+                continue
+            }
+
+            const { data: insertedMessage, error: messageError } =
+                await supabase
+                    .from('messages')
+                    .insert({
+                        channel_id: aiChannelId,
+                        content: message.content,
+                        sender_id: senderId,
+                        created_at: new Date().toISOString(),
+                    })
+                    .select()
+                    .single()
 
             if (messageError) {
                 console.error('Failed to insert message:', messageError)
+                continue
+            }
+
+            // Store the ID of the quantum message for reference
+            if (message === aiMessages[0]) {
+                // First message is our quantum message
+                quantumMessageId = insertedMessage.id
+            }
+        }
+
+        // Now insert the reference message with the actual quantum message ID
+        if (quantumMessageId) {
+            const referenceMessage = {
+                content: `Expanding on ${MENTION_TEMPLATES.MESSAGE(quantumMessageId, aiChannelId, 'ai-testing')}, we've now achieved quantum teleportation of complex molecular data. This breakthrough builds directly on our previous quantum simulation work!`,
+                sender: 'alice@test.com',
+            }
+
+            const senderId = userIds[referenceMessage.sender]
+            if (senderId) {
+                const { error: messageError } = await supabase
+                    .from('messages')
+                    .insert({
+                        channel_id: aiChannelId,
+                        content: referenceMessage.content,
+                        sender_id: senderId,
+                        created_at: new Date().toISOString(),
+                    })
+
+                if (messageError) {
+                    console.error(
+                        'Failed to insert reference message:',
+                        messageError,
+                    )
+                }
             }
         }
 

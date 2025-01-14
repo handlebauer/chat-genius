@@ -22,8 +22,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { formatMentionText } from '@/lib/utils/mentions'
+import { useRouter } from 'next/navigation'
 
 type User = Database['public']['Tables']['users']['Row']
 
@@ -125,6 +126,7 @@ export function MessageItem({
     onThreadToggle,
     messageRef: messageRefCallback,
 }: MessageItemProps) {
+    const router = useRouter()
     const thread = message.thread
     const [isEmojiOpen, setIsEmojiOpen] = useState(false)
     const [isReactionTooltipOpen, setIsReactionTooltipOpen] = useState(false)
@@ -134,6 +136,43 @@ export function MessageItem({
 
     const toggleReactionFn = useStore(state => state.toggleReaction)
     const mentionedUsers = useStore(state => state.mentionedUsers)
+    const selectMessage = useStore(state => state.selectMessage)
+
+    // Handle message mention clicks
+    const handleMessageClick = useCallback(
+        (event: React.MouseEvent) => {
+            const target = event.target as HTMLElement
+            if (target.closest('.message-mention')) {
+                event.preventDefault()
+                event.stopPropagation()
+
+                const mentionSpan = target.closest(
+                    '.message-mention',
+                ) as HTMLElement
+                const messageId = mentionSpan.getAttribute('data-message-id')
+                const channelId = mentionSpan.getAttribute('data-channel-id')
+
+                if (messageId && channelId) {
+                    console.log('🔗 Message mention clicked:', {
+                        messageId,
+                        channelId,
+                        currentChannelId: message.channel_id,
+                    })
+
+                    // If different channel, navigate first
+                    if (channelId !== message.channel_id) {
+                        console.log('↪️ Navigating to channel:', channelId)
+                        router.push(`/chat/${channelId}`)
+                    }
+
+                    // Select the message to trigger scroll
+                    console.log('🎯 Selecting message:', messageId)
+                    selectMessage(messageId)
+                }
+            }
+        },
+        [router, message.channel_id, selectMessage],
+    )
 
     // Format content with mentioned users from store
     const formattedContent = useMemo(
@@ -266,6 +305,7 @@ export function MessageItem({
                     <div
                         className="text-[13px] leading-relaxed text-zinc-800"
                         dangerouslySetInnerHTML={{ __html: formattedContent }}
+                        onClick={handleMessageClick}
                     />
                     <div className="pl-0 pb-1">
                         {message.attachments && (

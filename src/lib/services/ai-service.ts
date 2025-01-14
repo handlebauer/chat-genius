@@ -1,11 +1,13 @@
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
+import { MENTION_TEMPLATES } from '@/lib/utils/mentions'
 
 interface SearchResult {
     id: string
     content: string
     channel_id: string
+    channel_name?: string
     sender_id: string
     sender?: {
         id: string
@@ -52,18 +54,51 @@ function formatRelativeTime(date: Date): string {
 }
 
 // Utility functions for mention formatting
-function createMentionSpan(userId: string, userName: string): string {
-    return `<span class="mention mention-text" data-user-id="${userId}" data-name="${userName}">@${userName}</span>`
+function createUserMentionSpan(userId: string, userName: string): string {
+    return MENTION_TEMPLATES.USER(userId, userName)
+}
+
+function createMessageMentionSpan(
+    messageId: string,
+    channelId: string,
+    channelName: string,
+): string {
+    return MENTION_TEMPLATES.MESSAGE(messageId, channelId, channelName)
 }
 
 function formatMessageContext(msg: SearchResult): string {
-    const userName =
-        msg.sender?.name || msg.sender?.email?.split('@')[0] || 'unknown user'
-    const userId = msg.sender?.id || msg.sender_id
-    const dateInfo = formatRelativeTime(new Date(msg.created_at))
-    const mentionSpan = createMentionSpan(userId, userName)
+    const parts: string[] = []
 
-    return `[Previous Message (${dateInfo})] COPY_THIS_EXACT_MENTION_TAG:\`${mentionSpan}\` wrote: ${msg.content} (Similarity: ${(msg.similarity * 100).toFixed(1)}%)`
+    // Add timestamp
+    const dateInfo = formatRelativeTime(new Date(msg.created_at))
+    parts.push(`[Previous Message (${dateInfo})]`)
+
+    // Add user mention if sender info exists
+    if (msg.sender_id) {
+        const userName =
+            msg.sender?.name ||
+            msg.sender?.email?.split('@')[0] ||
+            'unknown user'
+        const userId = msg.sender?.id || msg.sender_id
+        const userMention = createUserMentionSpan(userId, userName)
+        parts.push(`COPY_THIS_EXACT_MENTION_TAG:\`${userMention}\` wrote`)
+    }
+
+    // Add message mention if we have channel info
+    if (msg.id && msg.channel_id) {
+        const messageMention = createMessageMentionSpan(
+            msg.id,
+            msg.channel_id,
+            msg.channel_name || 'unknown-channel',
+        )
+        parts.push(`(COPY_THIS_EXACT_MESSAGE_MENTION:\`${messageMention}\`)`)
+    }
+
+    // Add content and similarity
+    parts.push(msg.content)
+    parts.push(`(Similarity: ${(msg.similarity * 100).toFixed(1)}%)`)
+
+    return parts.join(' ')
 }
 
 // Logging utility
@@ -92,30 +127,63 @@ const log = {
 // System prompt for the AI
 const SYSTEM_PROMPT = `You are helping users with their questions about the current channel.
 
-CRITICAL INSTRUCTION ABOUT MENTIONS:
-When you see \`<span class="mention" data-user-id="...">@Username</span>\` in the context after "COPY_THIS_EXACT_MENTION_TAG:",
-you MUST copy and paste that EXACT span, including all attributes and quotes, when referring to that user.
-These spans contain critical metadata that must be preserved exactly as they appear between the backticks.
+# CRITICAL INSTRUCTIONS FOR MENTIONS AND REFERENCES
 
-Other instructions:
-1. Use the context provided from previous messages in your response.
-2. Include timing information naturally in your responses (e.g., "yesterday", "2 hours ago", "last week", etc.).
-3. Include specific dates naturally when relevant (e.g., "on March 15th", "back in January", etc.).
-4. Don't take the context as fact; you are simply using it to help answer the user's question.
-5. If the context isn't similar enough, tell the user that you don't know the answer.
-6. You don't need to offer help with general questions; only answer questions about the current channel.
+## Message Mentions (HIGH PRIORITY)
+1. When you see a message mention format like \`<span class="message-mention" ...>...</span>\` after "COPY_THIS_EXACT_MESSAGE_MENTION:",
+   you MUST copy and paste that EXACT span, including all attributes and quotes.
+2. ALWAYS try to reference specific messages using their message mention spans when discussing past conversations.
+3. Use message mentions to create clear links between related messages or when referencing specific points in the conversation.
+
+## User Mentions (HIGH PRIORITY)
+1. When you see \`<span class="mention" data-user-id="...">@Username</span>\` after "COPY_THIS_EXACT_MENTION_TAG:",
+   you MUST copy and paste that EXACT span, including all attributes and quotes.
+2. Use proper user mentions when referring to any user from the conversation history.
+
+# CONTEXT HANDLING
+
+## Using Message History
+1. Use the provided context from previous messages to inform your responses.
+2. Don't treat the context as absolute fact; use it as supporting information.
+3. If the context isn't similar enough, inform the user that you don't have enough information.
+
+## Time and Date References
+1. Include timing information naturally (e.g., "yesterday", "2 hours ago", "last week").
+2. Use specific dates when relevant (e.g., "on March 15th", "back in January").
+3. Maintain chronological clarity when referencing multiple messages.
+
+Context: {context}
+
+# RESPONSE GUIDELINES
+
+## Message Organization
+1. Group related messages from the same user when it makes sense.
+2. Use message mentions to create a clear narrative flow when discussing multiple messages.
+3. Structure your responses to show clear relationships between referenced messages.
+
+## Scope and Focus
+1. Focus only on answering questions about the current channel.
+2. Don't offer help with general questions outside the channel context.
+3. Keep responses relevant to the channel's discussion history.
 
 Here is the relevant context from previous messages in the channel:
 {context}
 
-Example of how to use mentions in your response:
-If you see: COPY_THIS_EXACT_MENTION_TAG:\`<span class="mention" data-user-id="123">@John</span>\`
-You should copy exactly: <span class="mention" data-user-id="123">@John</span> in your response.
+## Example Usage of Mentions:
+Message reference:
+COPY_THIS_EXACT_MESSAGE_MENTION:\`<span class="message-mention" data-message-id="456">...</span>\`
+→ Use exactly: <span class="message-mention" data-message-id="456">...</span>
+
+User reference:
+COPY_THIS_EXACT_MENTION_TAG:\`<span class="mention" data-user-id="123">@John</span>\`
+→ Use exactly: <span class="mention" data-user-id="123">@John</span>
 
 Remember:
-- Copy mention spans EXACTLY as they appear between backticks - this is critical for the chat system to work
-- Include timing information and specific dates naturally
-- Combine multiple related messages from the same user when it makes sense`
+- Message mentions are your primary tool for creating a coherent narrative
+- Copy ALL mention spans EXACTLY as they appear between backticks
+- Always link related messages using message mentions when possible
+- Create clear references to help users navigate the conversation history
+- Do not use markdown in your responses`
 
 export class AIService {
     private openai: OpenAI
@@ -172,7 +240,30 @@ export class AIService {
             msg => msg.channel_id === channelId,
         )
 
-        return await this.enrichMessagesWithSenderInfo(filteredMessages)
+        // Get channel names
+        const { data: channels } = await this.supabase
+            .from('channels')
+            .select('id, name')
+            .in(
+                'id',
+                filteredMessages.map(msg => msg.channel_id),
+            )
+
+        const channelMap = (channels || []).reduce(
+            (acc, channel) => ({
+                ...acc,
+                [channel.id]: channel.name,
+            }),
+            {} as Record<string, string>,
+        )
+
+        // Add channel names to messages
+        const messagesWithChannels = filteredMessages.map(msg => ({
+            ...msg,
+            channel_name: channelMap[msg.channel_id],
+        }))
+
+        return await this.enrichMessagesWithSenderInfo(messagesWithChannels)
     }
 
     private async enrichMessagesWithSenderInfo(
