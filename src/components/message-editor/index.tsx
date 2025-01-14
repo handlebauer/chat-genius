@@ -192,7 +192,10 @@ export function MessageEditor({
         setIsProcessingCommand(true)
 
         try {
-            if (activeCommand === 'ask') {
+            if (
+                activeCommand === 'ask-channel' ||
+                activeCommand === 'ask-all-channels'
+            ) {
                 // Clear the command input immediately
                 setActiveCommand(null)
                 editor?.commands.focus()

@@ -1,37 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { commands } from '@/lib/commands/definitions'
 
 interface CommandListProps {
     isOpen: boolean
     onSelect: (command: string) => void
     commandText: string
 }
-
-const commands = [
-    {
-        id: 'ask',
-        name: '/ask',
-        description: 'Get an answer to a question',
-        args: [
-            {
-                name: 'question',
-                placeholder: 'what is the question',
-                required: true,
-            },
-        ],
-    },
-    {
-        id: 'dummy',
-        name: '/dummy',
-        description: 'A dummy command for testing',
-        args: [
-            {
-                name: 'test',
-                placeholder: 'test input here',
-                required: true,
-            },
-        ],
-    },
-]
 
 function highlightMatch(text: string, query: string) {
     if (!query || query === '/') return text

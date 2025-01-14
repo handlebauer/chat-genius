@@ -1,40 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useStore } from '@/lib/store'
+import { commandArgs } from '@/lib/commands/definitions'
 
 interface CommandInputProps {
     commandId: string
     onSubmit: (args: { [key: string]: string }) => void
     onCancel: () => void
-}
-
-interface CommandArg {
-    name: string
-    placeholder: string
-    required: true
-    getLabel?: () => string
-}
-
-const commandArgs: Record<string, CommandArg[]> = {
-    ask: [
-        {
-            name: 'question',
-            placeholder: 'what is the question?',
-            required: true,
-            getLabel: () => {
-                const store = useStore.getState()
-                const channelId = store.activeChannelId
-                const channel = store.channels.find(c => c.id === channelId)
-                return channel?.name ? `#${channel.name}` : 'channel'
-            },
-        },
-    ],
-    dummy: [
-        {
-            name: 'test',
-            placeholder: 'test input here',
-            required: true,
-        },
-    ],
 }
 
 export function CommandInput({
