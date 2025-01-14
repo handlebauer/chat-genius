@@ -26,10 +26,10 @@ async function createSystemUser() {
         const { data: user, error } = await supabase
             .from('users')
             .insert({
-                email: 'system@gauntletai.com',
-                name: 'GauntletAI Bot',
+                email: 'ai-bot@test.com',
+                name: 'AI Test Bot',
                 avatar_url:
-                    'https://api.dicebear.com/7.x/bottts/svg?seed=gauntlet',
+                    'https://api.dicebear.com/7.x/bottts/svg?seed=ai-test',
             })
             .select()
             .single()
