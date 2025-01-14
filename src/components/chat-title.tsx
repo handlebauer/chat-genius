@@ -54,7 +54,7 @@ function ChannelTitle({
                         {!isOwner && isMember && (
                             <DropdownMenuItem
                                 onClick={() => leaveChannel(channel.id)}
-                                className="gap-2"
+                                className="gap-2 cursor-pointer"
                             >
                                 <LogOut className="h-4 w-4" />
                                 Leave Channel
@@ -63,7 +63,7 @@ function ChannelTitle({
                         {canDelete && (
                             <DropdownMenuItem
                                 onClick={() => deleteChannel(channel.id)}
-                                className="gap-2 text-red-600 focus:text-red-600"
+                                className="gap-2 text-red-600 focus:text-red-600 cursor-pointer"
                             >
                                 <Trash2 className="h-4 w-4" />
                                 Delete Channel

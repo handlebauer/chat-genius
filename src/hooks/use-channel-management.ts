@@ -12,7 +12,7 @@ export function useChannelManagement(userId: string) {
     const removeChannel = useStore(state => state.removeChannel)
     const canDeleteChannel = useStore(state => state.canDeleteChannel)
     const isChannelMember = useStore(state => state.isChannelMember)
-    const activeChannelId = useStore(state => state.activeChannelId)
+    const setChannelMemberships = useStore(state => state.setChannelMemberships)
 
     const handleCreateChannel = async (name: string) => {
         try {
@@ -75,7 +75,9 @@ export function useChannelManagement(userId: string) {
 
         try {
             await joinChannel(channelId, userId)
-            // No need to update store as the real-time subscription will handle it
+            // Update store immediately instead of waiting for real-time update
+            const currentMemberships = useStore.getState().channelMemberships
+            setChannelMemberships({ ...currentMemberships, [channelId]: true })
             router.push(`/chat/${channelId}`)
         } catch (error) {
             console.error('Failed to join channel:', error)
