@@ -34,12 +34,10 @@ const UserAvatar = memo(function UserAvatar({
     const avatarAlt = name || email || ''
 
     return (
-        <Button variant="ghost" size="icon" className="rounded-full">
-            <Avatar>
-                <AvatarImage src={avatarSrc} alt={avatarAlt} />
-                <AvatarFallback>{userInitials}</AvatarFallback>
-            </Avatar>
-        </Button>
+        <Avatar>
+            <AvatarImage src={avatarSrc} alt={avatarAlt} />
+            <AvatarFallback>{userInitials}</AvatarFallback>
+        </Avatar>
     )
 })
 
@@ -51,13 +49,13 @@ export const UserMenu = memo(function UserMenu({
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
                     <UserAvatar
                         email={email}
                         name={name}
                         avatar_url={avatar_url}
                     />
-                </DropdownMenuTrigger>
+                </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
