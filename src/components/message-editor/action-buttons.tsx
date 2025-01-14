@@ -53,7 +53,7 @@ export function ActionButtons({
     }
 
     return (
-        <div className="flex justify-between pl-[1px] pr-2 py-1 bg-zinc-50/30">
+        <div className="message-editor-actions flex justify-between pl-[1px] pr-2 py-1 bg-zinc-50/30">
             <input
                 type="file"
                 ref={fileInputRef}

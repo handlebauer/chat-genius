@@ -202,16 +202,31 @@ export function MessageEditor({
         }
     }, [editor, sendMessage, uploadedFiles])
 
+    const handleContainerMouseDown = useCallback((e: React.MouseEvent) => {
+        // Prevent blur when clicking toolbar/actions containers
+        const clickedToolbarOrActions = (e.target as HTMLElement).closest(
+            '.message-editor-toolbar, .message-editor-actions',
+        )
+        if (
+            clickedToolbarOrActions &&
+            !(e.target as HTMLElement).closest('button')
+        ) {
+            e.preventDefault()
+        }
+    }, [])
+
     const handleContainerClick = useCallback(
         (e: React.MouseEvent) => {
+            // Don't handle focus on button clicks
             if ((e.target as HTMLElement).closest('button')) return
+
             if (activeCommand) {
                 // Find and focus the command input
                 const commandInput = (
                     e.currentTarget as HTMLElement
                 ).querySelector('.command-input-field') as HTMLInputElement
                 commandInput?.focus()
-            } else {
+            } else if (!editor?.isFocused) {
                 editor?.commands.focus()
             }
         },
@@ -241,6 +256,7 @@ export function MessageEditor({
             <div
                 className="relative rounded-lg border border-input bg-background/80 transition-all duration-200 hover:bg-background focus-within:bg-background focus-within:border-zinc-400 focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.2)] group cursor-text"
                 onClick={handleContainerClick}
+                onMouseDown={handleContainerMouseDown}
             >
                 {editor && (
                     <div className="message-editor-container">

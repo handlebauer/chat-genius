@@ -9,7 +9,7 @@ interface ToolbarButtonsProps {
 
 export function ToolbarButtons({ editor }: ToolbarButtonsProps) {
     return (
-        <div className="flex gap-1 px-[1px] py-1 bg-zinc-50/30">
+        <div className="message-editor-toolbar flex gap-1 px-[1px] py-1 bg-zinc-50/30">
             <Button
                 variant="ghost"
                 size="sm"
