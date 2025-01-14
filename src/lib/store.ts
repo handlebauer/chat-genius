@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Database } from '@/lib/supabase/types'
+import { ChannelMemberships } from '@/hooks/use-chat-data'
 
 // Types
 interface ThreadReply {
@@ -106,7 +107,7 @@ interface ChannelsState {
     addChannel: (channel: Channel) => void
     removeChannel: (channelId: string) => void
     canDeleteChannel: (channelId: string, userId: string) => boolean
-    setChannelMemberships: (memberships: Record<string, boolean>) => void
+    setChannelMemberships: (memberships: ChannelMemberships) => void
     isChannelMember: (channelId: string) => boolean
 }
 

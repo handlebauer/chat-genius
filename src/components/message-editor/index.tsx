@@ -2,40 +2,48 @@
 
 import './message-editor.css'
 
+import { useCallback, useRef, KeyboardEvent, useState, useEffect } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useCallback, useRef, KeyboardEvent, useState, useEffect } from 'react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ToolbarButtons } from './toolbar-buttons'
 import { ActionButtons } from './action-buttons'
 import { FilePreview } from './file-preview'
 import { CommandList } from './command-list'
 import { CommandInput } from './command-input'
+import { MemberList } from './member-list'
 import { Channel } from '@/lib/store'
-import type { UploadedFile } from '@/hooks/use-file-upload'
 import { sendMessage } from '@/lib/actions/send-message'
 import { handleQuestionCommand } from '@/lib/actions/ai-commands'
 import { stripHtml } from '@/components/search-results'
 import { useStore } from '@/lib/store'
+import { ChannelMember } from '@/hooks/use-chat-data'
+import { MentionExtension } from './mention-extension'
+
+import type { UploadedFile } from '@/hooks/use-file-upload'
 
 interface MessageEditorProps {
     currentChannel: Channel
     userId: string
     dmParticipant?: { name: string; email: string } | null
+    currentChannelMembers: ChannelMember[]
 }
 
 export function MessageEditor({
     currentChannel,
     userId,
     dmParticipant,
+    currentChannelMembers,
 }: MessageEditorProps) {
     const editorRef = useRef(null)
     const [, setSelectedFiles] = useState<File[]>([])
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
     const [showCommandList, setShowCommandList] = useState(false)
+    const [showMemberList, setShowMemberList] = useState(false)
     const [activeCommand, setActiveCommand] = useState<string | null>(null)
     const [isProcessingCommand, setIsProcessingCommand] = useState(false)
     const [commandText, setCommandText] = useState('')
+    const [mentionText, setMentionText] = useState('')
 
     const getPlaceholder = () => {
         if (currentChannel.channel_type === 'direct_message') {
@@ -52,14 +60,26 @@ export function MessageEditor({
                     placeholder: getPlaceholder(),
                     emptyEditorClass: 'is-editor-empty',
                 }),
+                MentionExtension,
             ],
             content: '',
             autofocus: 'end',
+            editable: true,
+            injectCSS: true,
+            // Fix SSR hydration issues
+            enableInputRules: false,
+            enablePasteRules: false,
+            immediatelyRender: false,
             editorProps: {
                 attributes: {
                     class: 'w-full text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto min-h-[24px] max-h-[200px]',
                 },
-                handleKeyDown: (view, event) => {
+                handleKeyDown: (_, event) => {
+                    // If member list is shown, let it handle keyboard events
+                    if (showMemberList) {
+                        return false
+                    }
+
                     // Prevent Enter key from creating newlines unless Shift is pressed
                     if (event.key === 'Enter' && !event.shiftKey) {
                         return true // Return true to prevent the default behavior
@@ -78,6 +98,7 @@ export function MessageEditor({
                     // Directly activate the command if it exists
                     const commandId = commandMatch[1]
                     setShowCommandList(false)
+                    setShowMemberList(false)
                     setActiveCommand(commandId)
                     editor.commands.setContent('')
                     return
@@ -86,10 +107,27 @@ export function MessageEditor({
                 // Show command list if cursor is right after a slash
                 if (textBeforeCursor.startsWith('/')) {
                     setShowCommandList(true)
+                    setShowMemberList(false)
                     setCommandText(textBeforeCursor)
                 } else {
                     setShowCommandList(false)
-                    setCommandText('')
+                }
+
+                // Check for @ mentions
+                // Only match @ that isn't part of an existing mention node
+                const node = editor.state.doc.nodeAt(cursorPos - 1)
+                const isInsideMention = node?.type.name === 'chatMention'
+                const mentionMatch =
+                    !isInsideMention && textBeforeCursor.match(/@[^@\s]*$/)
+                const shouldShowMemberList = mentionMatch
+
+                if (shouldShowMemberList) {
+                    setShowMemberList(true)
+                    setShowCommandList(false)
+                    // Include the full mention text including @ symbol and any characters after it
+                    setMentionText(mentionMatch[0])
+                } else if (!mentionMatch) {
+                    setShowMemberList(false)
                 }
             },
         },
@@ -251,6 +289,32 @@ export function MessageEditor({
         setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
     }, [])
 
+    const handleMemberSelect = (member: ChannelMember) => {
+        if (!editor) return
+
+        // Delete the @ symbol and any characters after it
+        const content = editor.getText()
+        const cursorPos = editor.state.selection.$head.pos
+        const textBeforeCursor = content.slice(0, cursorPos)
+        const atIndex = textBeforeCursor.lastIndexOf('@')
+
+        if (atIndex === -1) return
+
+        // Check if we need a leading space before the mention
+        const needsLeadingSpace = atIndex > 0
+
+        editor
+            .chain()
+            .focus()
+            .setTextSelection({ from: atIndex, to: cursorPos })
+            .deleteSelection()
+            .insertContent(needsLeadingSpace ? ' ' : '')
+            .insertMention(member)
+            .run()
+
+        setShowMemberList(false)
+    }
+
     return (
         <div className="p-4 pt-0">
             <div
@@ -265,6 +329,14 @@ export function MessageEditor({
                                 isOpen={showCommandList}
                                 onSelect={handleCommandSelect}
                                 commandText={commandText}
+                            />
+                        )}
+                        {showMemberList && (
+                            <MemberList
+                                isOpen={showMemberList}
+                                onSelect={handleMemberSelect}
+                                searchText={mentionText}
+                                members={currentChannelMembers}
                             />
                         )}
                         <ToolbarButtons editor={editor} />

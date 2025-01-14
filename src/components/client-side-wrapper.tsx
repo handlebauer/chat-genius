@@ -14,6 +14,7 @@ import { Channel, UserData, useStore } from '@/lib/store'
 import { MembersSidebar } from './members-sidebar'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { JoinChannelPrompt } from './join-channel-prompt'
+import { ChannelMember, ChannelMemberships } from '@/hooks/use-chat-data'
 
 interface ClientSideWrapperProps {
     channelId: string
@@ -21,15 +22,9 @@ interface ClientSideWrapperProps {
     initialData: {
         channels: Channel[]
         directMessages: Channel[]
-        channelMemberships: Record<string, boolean>
+        channelMemberships: ChannelMemberships
     }
-    currentChannelMembers: {
-        id: string
-        name: string | null
-        email: string
-        avatar_url: string | null
-        role: 'owner' | 'admin' | 'member'
-    }[]
+    currentChannelMembers: ChannelMember[]
 }
 
 export function ClientSideWrapper({
@@ -99,6 +94,9 @@ export function ClientSideWrapper({
                                         currentChannel={currentChannel}
                                         userId={userData.id}
                                         dmParticipant={undefined}
+                                        currentChannelMembers={
+                                            currentChannelMembers
+                                        }
                                     />
                                 </div>
                             </>

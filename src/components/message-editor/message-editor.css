@@ -65,3 +65,33 @@
 .command-input-field {
     color: #111;
 }
+
+/* Mention styles */
+.mention {
+    color: rgb(64, 64, 64); /* Dark gray */
+    background-color: rgb(245, 245, 245); /* Light gray background */
+    border-radius: 4px;
+    padding: 0 1px;
+    font-weight: 600; /* Slightly bolder */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgb(229, 229, 229); /* Subtle border */
+}
+
+.mention:hover {
+    background-color: rgb(229, 229, 229);
+    border-color: rgb(209, 209, 209);
+}
+
+.mention-text {
+    color: rgb(var(--primary));
+    background-color: rgba(var(--primary), 0.1);
+    border-radius: 4px;
+    padding: 0 4px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.mention-text:hover {
+    background-color: rgba(var(--primary), 0.2);
+}

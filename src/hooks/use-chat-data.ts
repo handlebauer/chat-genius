@@ -1,13 +1,17 @@
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { useChannels } from './use-channels'
+import { Database } from '@/lib/supabase/types'
 
-interface ChannelMember {
+export interface ChannelMember {
     id: string
     name: string | null
     email: string
     avatar_url: string | null
     role: 'owner' | 'admin' | 'member'
+}
+
+export interface ChannelMemberships {
+    [channelId: string]: boolean
 }
 
 interface ChannelMemberResponse {
@@ -56,7 +60,7 @@ export async function useChatData(user: User, channelId: string) {
         // Fetch user's channel memberships
         supabase
             .from('channel_members')
-            .select('channel_id')
+            .select('channel_id, role')
             .eq('user_id', user.id),
     ])
 
@@ -82,7 +86,7 @@ export async function useChatData(user: User, channelId: string) {
             }
             return acc
         },
-        {} as Record<string, boolean>,
+        {} as ChannelMemberships,
     )
 
     // Group members by channel for easier access

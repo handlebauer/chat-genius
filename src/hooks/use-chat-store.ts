@@ -2,13 +2,14 @@ import { useEffect } from 'react'
 import { Channel, useStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 import { useShallow } from 'zustand/react/shallow'
+import { ChannelMemberships } from './use-chat-data'
 
 export function useChatStore(
     channelId: string,
     initialData?: {
         channels: Channel[]
         directMessages: Channel[]
-        channelMemberships: Record<string, boolean>
+        channelMemberships: ChannelMemberships
     },
 ) {
     const supabase = createClient()
@@ -93,7 +94,7 @@ export function useChatStore(
                         }
                         return acc
                     },
-                    {} as Record<string, boolean>,
+                    {} as ChannelMemberships,
                 )
                 setChannelMemberships(membershipMap)
             }
