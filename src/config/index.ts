@@ -7,7 +7,14 @@ const configSchema = z.object({
     // Supabase configuration
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-    // Add other environment variables here
+    NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+    // Site configuration
+    NEXT_PUBLIC_SITE_URL: z.string().url(),
+    // Auth configuration
+    SUPABASE_AUTH_EXTERNAL_DISCORD_SECRET: z.string().optional(),
+    SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET: z.string().optional(),
+    SUPABASE_AUTH_EXTERNAL_DISCORD_CLIENT_ID: z.string().optional(),
+    SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID: z.string().optional(),
 })
 
 type Config = z.infer<typeof configSchema>
@@ -16,13 +23,26 @@ function validateConfig(): Config {
     try {
         return configSchema.parse({
             NODE_ENV: process.env.NODE_ENV,
+            NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
             NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
             NEXT_PUBLIC_SUPABASE_ANON_KEY:
                 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY:
+                process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY,
+            SUPABASE_AUTH_EXTERNAL_DISCORD_SECRET:
+                process.env.SUPABASE_AUTH_EXTERNAL_DISCORD_SECRET,
+            SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET:
+                process.env.SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET,
+            SUPABASE_AUTH_EXTERNAL_DISCORD_CLIENT_ID:
+                process.env.SUPABASE_AUTH_EXTERNAL_DISCORD_CLIENT_ID,
+            SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID:
+                process.env.SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID,
         })
     } catch (error) {
         if (error instanceof z.ZodError) {
-            console.error('❌ Invalid configuration:')
+            console.error(
+                `❌ Invalid configuration for ${process.env.NODE_ENV} environment:`,
+            )
             error.errors.forEach(err => {
                 console.error(`  - ${err.path.join('.')}: ${err.message}`)
             })

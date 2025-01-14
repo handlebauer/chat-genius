@@ -2,7 +2,7 @@
 
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '../../src/lib/supabase/types'
+import type { Database } from '@/lib/supabase/types'
 
 const log = {
     info: (msg: string) => console.log(`\x1b[36m○\x1b[0m ${msg}`),

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '../src/lib/supabase/types'
-import { config } from '../src/config'
+import type { Database } from '@/lib/supabase/types'
+import { config } from '@/config'
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -330,3 +330,5 @@ export async function seedDev() {
 
     console.log('AI test data seeding completed!')
 }
+
+await seedDev().catch(console.error)
