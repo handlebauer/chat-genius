@@ -37,10 +37,15 @@
     margin-top: -3px;
     align-items: start;
     height: 24px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid;
     border-radius: 4px;
     overflow: hidden;
-    background: white;
+    background: transparent;
+    transition: all 0.15s ease;
+}
+
+.command-input-container:focus-within {
+    border-color: #4a90e2;
 }
 
 .command-input-prefix {
@@ -49,6 +54,8 @@
     height: 24px;
     font-size: 14px;
     font-weight: 500;
+    margin-top: -1px;
+    letter-spacing: -0.02em;
 }
 
 .command-input-label {
@@ -57,25 +64,40 @@
     height: 100%;
     padding: 0 8px;
     font-size: 14px;
-    background: hsla(220, 13%, 91%, 0.4);
-    border-right: 1px solid #e5e7eb;
-    color: #23272e;
+    background: transparent;
+    border-right: 1px solid #4a90e2;
+    color: #1f2937;
+    letter-spacing: -0.01em;
 }
 
 .command-input-field {
-    color: #111;
+    color: #1f2937;
+    letter-spacing: -0.01em;
+    background: transparent;
+}
+
+.command-input-container.error {
+    animation: shake 0.2s ease-in-out 0s 2;
+    border-color: #ef4444;
+}
+
+@keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(4px); }
+    75% { transform: translateX(-4px); }
+    100% { transform: translateX(0); }
 }
 
 /* Mention styles */
 .mention {
-    color: rgb(64, 64, 64); /* Dark gray */
-    background-color: rgb(245, 245, 245); /* Light gray background */
+    color: rgb(64, 64, 64);
+    background-color: rgb(245, 245, 245);
     border-radius: 4px;
     padding: 0 1px;
-    font-weight: 600; /* Slightly bolder */
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    border: 1px solid rgb(229, 229, 229); /* Subtle border */
+    border: 1px solid rgb(229, 229, 229);
 }
 
 .mention:hover {

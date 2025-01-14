@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useStore } from '@/lib/store'
 
 interface CommandInputProps {
     commandId: string
@@ -6,12 +7,25 @@ interface CommandInputProps {
     onCancel: () => void
 }
 
-const commandArgs = {
+interface CommandArg {
+    name: string
+    placeholder: string
+    required: true
+    getLabel?: () => string
+}
+
+const commandArgs: Record<string, CommandArg[]> = {
     ask: [
         {
             name: 'question',
             placeholder: 'what is the question?',
             required: true,
+            getLabel: () => {
+                const store = useStore.getState()
+                const channelId = store.activeChannelId
+                const channel = store.channels.find(c => c.id === channelId)
+                return channel?.name ? `#${channel.name}` : 'channel'
+            },
         },
     ],
     dummy: [
@@ -79,7 +93,9 @@ export function CommandInput({
                     showError ? 'error' : ''
                 }`}
             >
-                <span className="command-input-label">{arg.name}</span>
+                <span className="command-input-label">
+                    {arg.getLabel ? arg.getLabel() : arg.name}
+                </span>
                 <input
                     type="text"
                     className="command-input-field leading-snug pr-[9px] pl-[8px] font-mono box-content m-0 overflow-visible text-left outline-none"

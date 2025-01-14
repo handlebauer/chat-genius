@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChannelMember } from '@/hooks/use-chat-data'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface MemberListProps {
     isOpen: boolean
@@ -16,7 +17,7 @@ function highlightMatch(text: string, query: string) {
     return (
         <>
             {text.slice(0, index)}
-            <span className="font-semibold bg-yellow-100/50">
+            <span className="font-semibold">
                 {text.slice(index, index + query.length)}
             </span>
             {text.slice(index + query.length)}
@@ -94,18 +95,36 @@ export function MemberList({
         <div className="absolute bg-white bottom-full left-0 right-0 mb-1 bg-popover rounded-md border shadow-md">
             <ul ref={listRef} className="max-h-[200px] overflow-y-auto py-0.5">
                 {filteredMembers.map((member, index) => {
-                    const displayName =
+                    const displayName = (
                         member.name || member.email.split('@')[0]
+                    ).trim()
+                    const initials = displayName
+                        .split(' ')
+                        .map(n => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)
+
                     return (
                         <li
                             key={member.id}
-                            className={`px-3 py-1.5 cursor-pointer text-sm transition-colors hover:bg-zinc-100 ${
+                            className={`px-3 py-1.5 cursor-pointer text-sm transition-colors hover:bg-zinc-100 flex items-center gap-2 ${
                                 index === selectedIndex ? 'bg-zinc-100' : ''
                             }`}
                             onClick={() => onSelect(member)}
                             onMouseEnter={() => setSelectedIndex(index)}
                         >
-                            {highlightMatch(displayName, query)}
+                            <Avatar className="h-5 w-5">
+                                <AvatarImage
+                                    src={member.avatar_url || undefined}
+                                />
+                                <AvatarFallback className="text-xs">
+                                    {initials}
+                                </AvatarFallback>
+                            </Avatar>
+                            <span className="whitespace-nowrap">
+                                {highlightMatch(displayName, query)}
+                            </span>
                         </li>
                     )
                 })}
