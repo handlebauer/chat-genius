@@ -81,7 +81,7 @@ export class AIService {
         embedding: number[],
         channelId: string,
         limit = 5,
-        similarity_threshold = 0.5,
+        similarity_threshold = 0,
     ): Promise<SearchResult[]> {
         const { data: messages, error } = await this.supabase.rpc(
             'match_messages',
@@ -123,9 +123,11 @@ export class AIService {
             messages: [
                 {
                     role: 'system',
-                    content: `You are helping users with their questions
-                    1. Use the context provided from previous messages in your response
-                    2. If no relevant context is provided, just respond with a generic answer
+                    content: `You are helping users with their questions about the current channel.
+                    1. Use the context provided from previous messages in your response.
+                    2. Don't take the context as fact; you are simply using it to help answer the user's question.
+                    3. If the context isn't similar enough, tell the user that you don't know the answer.
+                    4. You don't need to offer help with general questions; only answer questions about the current channel.
 
                     Here is the relevant context from previous messages in the channel:
                     ${context}`,
