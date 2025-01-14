@@ -205,9 +205,17 @@ export function MessageEditor({
     const handleContainerClick = useCallback(
         (e: React.MouseEvent) => {
             if ((e.target as HTMLElement).closest('button')) return
-            editor?.commands.focus()
+            if (activeCommand) {
+                // Find and focus the command input
+                const commandInput = (
+                    e.currentTarget as HTMLElement
+                ).querySelector('.command-input-field') as HTMLInputElement
+                commandInput?.focus()
+            } else {
+                editor?.commands.focus()
+            }
         },
-        [editor],
+        [editor, activeCommand],
     )
 
     const handleFilesSelected = useCallback((files: File[]) => {
