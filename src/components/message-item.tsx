@@ -22,9 +22,8 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { formatMentionText } from '@/lib/utils/mentions'
-import { createClient } from '@/lib/supabase/client'
 
 type User = Database['public']['Tables']['users']['Row']
 
@@ -122,7 +121,6 @@ export function MessageItem({
     expandedThreadId,
     newlyCreatedThreadIds,
     currentUser,
-    onOpenMenuChange,
     onCreateThread,
     onThreadToggle,
     messageRef: messageRefCallback,
@@ -131,14 +129,17 @@ export function MessageItem({
     const [isEmojiOpen, setIsEmojiOpen] = useState(false)
     const [isReactionTooltipOpen, setIsReactionTooltipOpen] = useState(false)
     const [isThreadTooltipOpen, setIsThreadTooltipOpen] = useState(false)
-    const [formattedContent, setFormattedContent] = useState(message.content)
-    const [mentionedUsers, setMentionedUsers] = useState<Record<string, User>>(
-        {},
-    )
     const messageRef = useRef<HTMLDivElement | null>(null)
     const messagePositionRef = useRef<number | null>(null)
 
     const toggleReactionFn = useStore(state => state.toggleReaction)
+    const mentionedUsers = useStore(state => state.mentionedUsers)
+
+    // Format content with mentioned users from store
+    const formattedContent = useMemo(
+        () => formatMentionText(message.content, mentionedUsers),
+        [message.content, mentionedUsers],
+    )
 
     // Store the message's position before any thread interaction
     const captureMessagePosition = () => {
@@ -212,45 +213,6 @@ export function MessageItem({
             // TODO: Add error toast notification
         }
     }
-
-    // Load mentioned users' data
-    useEffect(() => {
-        const loadMentionedUsers = async () => {
-            const mentionRegex = /data-user-id="([^"]+)"/g
-            const userIds: string[] = []
-            let match
-
-            while ((match = mentionRegex.exec(message.content)) !== null) {
-                userIds.push(match[1])
-            }
-
-            if (userIds.length === 0) return
-
-            const supabase = createClient()
-            const { data: users } = await supabase
-                .from('users')
-                .select(
-                    'id, name, email, avatar_url, created_at, status, updated_at',
-                )
-                .in('id', userIds)
-
-            if (users) {
-                const usersMap = users.reduce(
-                    (acc, user) => {
-                        acc[user.id] = user
-                        return acc
-                    },
-                    {} as Record<string, User>,
-                )
-                setMentionedUsers(usersMap)
-                setFormattedContent(
-                    formatMentionText(message.content, usersMap),
-                )
-            }
-        }
-
-        loadMentionedUsers()
-    }, [message.content])
 
     return (
         <div

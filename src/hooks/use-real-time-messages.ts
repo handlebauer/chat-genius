@@ -1,9 +1,14 @@
 import { useEffect } from 'react'
-import type { Database } from '@/lib/supabase/types'
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { useStore } from '@/lib/store'
 import { useShallow } from 'zustand/react/shallow'
 import { createClient } from '@/lib/supabase/client'
+import type { Database } from '@/lib/supabase/types'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import {
+    parseMentions,
+    aggregateMentionedUserIds,
+    formatMentionText,
+} from '@/lib/utils/mentions'
 
 type MessageRow = {
     id: string
@@ -62,10 +67,11 @@ export function useRealTimeMessages(channelId: string) {
     const setMessagesLoading = useStore(state => state.setMessagesLoading)
     const addMessage = useStore(state => state.addMessage)
     const userData = useStore(state => state.userData)
+    const addMentionedUsers = useStore(state => state.addMentionedUsers)
 
     // Load initial messages
     useEffect(() => {
-        if (!channelId || !userData) return // Don't load messages until we have both channelId and userData
+        if (!channelId || !userData) return
         const currentUserId = userData.id
 
         async function loadMessages() {
@@ -166,7 +172,38 @@ export function useRealTimeMessages(channelId: string) {
             }
 
             if (messagesData) {
-                // Combine messages with their thread data
+                // Fetch mentioned users data
+                const mentionedUserIds = aggregateMentionedUserIds(messagesData)
+                let mentionedUsers: Record<
+                    string,
+                    Database['public']['Tables']['users']['Row']
+                > = {}
+
+                if (mentionedUserIds.length > 0) {
+                    const { data: users } = await supabase
+                        .from('users')
+                        .select(
+                            'id, name, email, avatar_url, status, created_at, updated_at',
+                        )
+                        .in('id', mentionedUserIds)
+
+                    if (users) {
+                        mentionedUsers = users.reduce(
+                            (acc, user) => {
+                                acc[user.id] = user
+                                return acc
+                            },
+                            {} as Record<
+                                string,
+                                Database['public']['Tables']['users']['Row']
+                            >,
+                        )
+                        // Add mentioned users to the global store
+                        addMentionedUsers(mentionedUsers)
+                    }
+                }
+
+                // Combine messages with their thread data and format mentions
                 const messagesWithThreadsAndReactions = messagesData.map(
                     message => {
                         // Process reactions
@@ -210,8 +247,15 @@ export function useRealTimeMessages(channelId: string) {
                             },
                         )
 
+                        // Format mentions with user data
+                        const formattedContent = formatMentionText(
+                            message.content,
+                            mentionedUsers,
+                        )
+
                         return {
                             ...message,
+                            content: formattedContent,
                             sender: message.sender as unknown as Database['public']['Tables']['users']['Row'],
                             thread: threadMap.get(message.id),
                             reactions,
@@ -226,7 +270,14 @@ export function useRealTimeMessages(channelId: string) {
         }
 
         loadMessages()
-    }, [channelId, userData, supabase, setMessages, setMessagesLoading])
+    }, [
+        channelId,
+        userData,
+        supabase,
+        setMessages,
+        setMessagesLoading,
+        addMentionedUsers,
+    ])
 
     // Set up real-time subscription
     useEffect(() => {
@@ -353,6 +404,39 @@ export function useRealTimeMessages(channelId: string) {
                             .single()
 
                         if (messageData) {
+                            // Handle mentions in the new message
+                            const mentionedUserIds = parseMentions(
+                                messageData.content,
+                            )
+                            if (mentionedUserIds.length > 0) {
+                                const { data: users } = await supabase
+                                    .from('users')
+                                    .select(
+                                        'id, name, email, avatar_url, status, created_at, updated_at',
+                                    )
+                                    .in('id', mentionedUserIds)
+
+                                if (users) {
+                                    const mentionedUsers = users.reduce(
+                                        (acc, user) => {
+                                            acc[user.id] = user
+                                            return acc
+                                        },
+                                        {} as Record<
+                                            string,
+                                            Database['public']['Tables']['users']['Row']
+                                        >,
+                                    )
+                                    // Add mentioned users to the global store
+                                    addMentionedUsers(mentionedUsers)
+                                    // Format the message content with user data
+                                    messageData.content = formatMentionText(
+                                        messageData.content,
+                                        mentionedUsers,
+                                    )
+                                }
+                            }
+
                             const message = {
                                 ...messageData,
                                 sender: messageData.sender as unknown as Database['public']['Tables']['users']['Row'],
@@ -368,7 +452,14 @@ export function useRealTimeMessages(channelId: string) {
         return () => {
             channel.unsubscribe()
         }
-    }, [supabase, channelId, messages, setMessages, addMessage])
+    }, [
+        supabase,
+        channelId,
+        messages,
+        setMessages,
+        addMessage,
+        addMentionedUsers,
+    ])
 
     // Set up real-time subscription for reactions
     useEffect(() => {

@@ -47,6 +47,13 @@ export type Channel = Database['public']['Tables']['channels']['Row']
 export type UserData = Database['public']['Tables']['users']['Row']
 
 // Store interfaces
+interface MentionedUsersState {
+    mentionedUsers: Record<string, UserData> // Keyed by user_id
+    setMentionedUsers: (users: Record<string, UserData>) => void
+    addMentionedUsers: (users: Record<string, UserData>) => void
+    getMentionedUser: (userId: string) => UserData | undefined
+}
+
 interface MessagesState {
     messages: Record<string, Message[]> // Keyed by channel_id
     messagesLoading: Record<string, boolean> // Loading state for each channel
@@ -116,7 +123,8 @@ interface Store
     extends MessagesState,
         OnlineUsersState,
         UserState,
-        ChannelsState {}
+        ChannelsState,
+        MentionedUsersState {}
 
 // Create store
 export const useStore = create<Store>((set, get) => ({
@@ -356,4 +364,16 @@ export const useStore = create<Store>((set, get) => ({
 
         return null
     },
+
+    // Mentioned users slice
+    mentionedUsers: {},
+    setMentionedUsers: users => set({ mentionedUsers: users }),
+    addMentionedUsers: users =>
+        set(state => ({
+            mentionedUsers: {
+                ...state.mentionedUsers,
+                ...users,
+            },
+        })),
+    getMentionedUser: userId => get().mentionedUsers[userId],
 }))

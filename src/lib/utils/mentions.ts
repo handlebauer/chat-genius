@@ -42,3 +42,16 @@ export function extractPlainText(content: string): string {
         )
         .replace(/<[^>]+>/g, '') // Remove any other HTML tags
 }
+
+export function aggregateMentionedUserIds(
+    messages: { content: string }[],
+): string[] {
+    const mentionedUserIds = new Set<string>()
+
+    for (const message of messages) {
+        const messageUserIds = parseMentions(message.content)
+        messageUserIds.forEach(id => mentionedUserIds.add(id))
+    }
+
+    return Array.from(mentionedUserIds)
+}
