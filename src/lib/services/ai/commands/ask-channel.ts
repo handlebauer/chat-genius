@@ -1,8 +1,8 @@
 import {
+    AICommandContext,
     AICommandHandler,
     AIResponse,
     SearchResult,
-    AICommandContext,
 } from '../types'
 import { formatMessageContext } from '../utils'
 
@@ -24,14 +24,14 @@ You MUST follow these rules EXACTLY - no exceptions:
 Examples:
 
 CORRECT Message Flow:
-- "The issue was resolved using <span class="message-mention message-mention-text" data-msg-id="abc">nginx config fix</span>"
-- "<span class="mention" data-user-id="123">@John</span> implemented the <span class="message-mention message-mention-text" data-msg-id="abc">database schema changes</span>"
-- "We can solve this using the <span class="message-mention message-mention-text" data-msg-id="abc">caching strategy</span> approach"
+- "The issue was resolved using <span class="message-mention message-mention-text" data-message-id="abc">nginx config fix</span>"
+- "<span class="mention" data-user-id="123">@John</span> implemented the <span class="message-mention message-mention-text" data-message-id="abc">database schema changes</span>"
+- "We can solve this using the <span class="message-mention message-mention-text" data-message-id="abc">caching strategy</span> approach"
 
 INCORRECT Message Flow:
-- "<span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">nginx config solution</span> This fixes the issue"
-- "<span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">database changes</span> As John mentioned"
-- "The solution is here: <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">fix steps</span>"
+- "<span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">nginx config solution</span> This fixes the issue"
+- "<span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">database changes</span> As John mentioned"
+- "The solution is here: <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">fix steps</span>"
 
 CORRECT User Mentions: When provided "COPY_THIS_EXACT_USER_MENTION: <span class="mention" data-user-id="123">@John</span>", use exactly:
 - <span class="mention" data-user-id="123" data-user-name="John">@John</span> asked about...
@@ -43,18 +43,18 @@ INCORRECT User Mentions:
 - <span class="mention" data-user-id="123">John</span> (removed @ symbol)
 - John mentioned... (missing entire mention structure)
 
-CORRECT Message Mentions: When provided "COPY_THIS_EXACT_MESSAGE_MENTION: <span class="message-mention message-mention-text" data-msg-id="abc">earlier message</span>", modify only the inner text:
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">deployment steps explained</span>
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">bug reproduction steps</span>
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">API rate limits</span>
+CORRECT Message Mentions: When provided "COPY_THIS_EXACT_MESSAGE_MENTION: <span class="message-mention message-mention-text" data-message-id="abc">earlier message</span>", modify only the inner text:
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">deployment steps explained</span>
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">bug reproduction steps</span>
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">API rate limits</span>
 
 INCORRECT Message Mentions:
 - <span>deployment steps</span> (missing attributes)
 - deployment steps explained (missing span)
-- <span class="message-mention message-mention-text" data-channel-id="123">steps</span> (missing data-msg-id)
-- <span class="message-mention message-mention-text" data-msg-id="abc">steps</span> (missing data-channel-id)
-- <span class="message-mention message-mention-text" data-msg-id="different-id" data-channel-id="different-id">steps</span> (modified attributes)
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">this message contains a very long and detailed explanation of the deployment steps which...</span> (too verbose)
+- <span class="message-mention message-mention-text" data-channel-id="123">steps</span> (missing data-message-id)
+- <span class="message-mention message-mention-text" data-message-id="abc">steps</span> (missing data-channel-id)
+- <span class="message-mention message-mention-text" data-message-id="different-id" data-channel-id="different-id">steps</span> (modified attributes)
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">this message contains a very long and detailed explanation of the deployment steps which...</span> (too verbose)
 
 ## Response Structure
 1. Start with a direct answer

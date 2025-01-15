@@ -1,8 +1,8 @@
 import {
+    AICommandContext,
     AICommandHandler,
     AIResponse,
     SearchResult,
-    AICommandContext,
 } from '../types'
 import { formatMessageContext } from '../utils'
 
@@ -20,14 +20,14 @@ const SYSTEM_PROMPT = `You are helping users with their questions about all chan
 Examples:
 
 CORRECT Message Mentions:
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">deployment steps explained</span>
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">API rate limits</span>
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">bug reproduction steps</span>
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">deployment steps explained</span>
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">API rate limits</span>
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">bug reproduction steps</span>
 
 INCORRECT Message Mentions:
 - deployment steps (missing span)
 - <span>deployment steps</span> (missing attributes)
-- <span class="message-mention message-mention-text" data-msg-id="abc" data-channel-id="123">this message contains a very long and detailed explanation of the deployment steps which...</span> (too verbose)
+- <span class="message-mention message-mention-text" data-message-id="abc" data-channel-id="123">this message contains a very long and detailed explanation of the deployment steps which...</span> (too verbose)
 
 CORRECT User Mentions:
 - <span class="mention" data-user-id="123">@John</span> suggested...
