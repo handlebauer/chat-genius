@@ -41,7 +41,7 @@ export function MembersSidebar({
 }: MembersSidebarProps) {
     const router = useRouter()
 
-    const { onlineUsers } = useOnlineUsers({ userId })
+    const { onlineUsers, isLoading } = useOnlineUsers({ userId })
     const { isIdle } = useIdleDetection()
     const channels = useStore(useShallow(state => state.channels))
 
@@ -95,10 +95,12 @@ export function MembersSidebar({
 
                 if (existingChannel) {
                     // If DM exists, just navigate to it
+                    useStore.getState().addChannel(existingChannel)
                     router.push(`/chat/${existingChannel.id}`)
                 } else {
                     // Create new DM channel if none exists and navigate to it
                     const channel = await createDM(userId, otherUserId)
+                    useStore.getState().addChannel(channel)
                     router.push(`/chat/${channel.id}`)
                 }
             } catch (error) {
@@ -107,6 +109,10 @@ export function MembersSidebar({
         },
         [userId, router, channels],
     )
+
+    if (isLoading) {
+        return null
+    }
 
     return (
         <div className="w-60 bg-zinc-50 border-l flex flex-col">

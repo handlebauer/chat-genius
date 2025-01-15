@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useUserData } from '@/hooks/use-user-data'
 import { useIdleDetection } from '@/hooks/use-idle-detection'
 import { useStore } from '@/lib/store'
@@ -30,6 +30,7 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
     const setOnlineUsers = useStore(state => state.setOnlineUsers)
     const { userData } = useUserData(userId)
     const { isIdle } = useIdleDetection()
+    const [isLoading, setIsLoading] = useState(true)
 
     // Memoize the presence sync handler with proper types
     const handlePresenceSync = useCallback(
@@ -76,6 +77,7 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
                     status: isIdle ? 'away' : 'online',
                 }
                 await channel.track(presenceData)
+                setIsLoading(false)
             }
         })
 
@@ -84,5 +86,5 @@ export function useOnlineUsers({ userId }: OnlineUsersProps) {
         }
     }, [userData, supabase, handlePresenceSync, isIdle])
 
-    return { onlineUsers }
+    return { onlineUsers, isLoading }
 }
