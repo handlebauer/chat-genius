@@ -134,6 +134,15 @@ export function useChatStore(
         }
     }, [supabase, setChannels, setChannelMemberships, isHydrated])
 
+    // Update active channel ID when channelId changes
+    useEffect(() => {
+        if (channelId) {
+            console.log('Setting active channel ID in useChatStore:', channelId)
+
+            setActiveChannelId(channelId)
+        }
+    }, [channelId, setActiveChannelId])
+
     // Return derived data
     const currentChannel = channels?.find(channel => channel.id === channelId)
     const regularChannels =

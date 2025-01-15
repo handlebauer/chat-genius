@@ -1,14 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-    Hash,
-    ChevronDown,
-    Plus,
-    Trash2,
-    LogOut,
-    MoreVertical,
-} from 'lucide-react'
+import { Hash, ChevronDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
     Collapsible,
@@ -24,73 +17,15 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useRouter, useParams } from 'next/navigation'
 import { useChannelManagement } from '@/hooks/use-channel-management'
 import { UserData, useStore } from '@/lib/store'
 import { useCallback, useMemo, useState } from 'react'
-import { useChannels } from '@/hooks/use-channels'
 import type { Database } from '@/lib/supabase/types'
 
 type Channel = Database['public']['Tables']['channels']['Row']
-
-function DeleteChannelDialog({
-    channel,
-    onDelete,
-}: {
-    channel: Channel
-    onDelete: () => Promise<void>
-}) {
-    return (
-        <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="px-2 h-6 w-6 hover:bg-zinc-50/50 rounded-sm"
-                >
-                    <Trash2 className="h-4 w-4 text-zinc-600 hover:text-zinc-400 transition-colors" />
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Channel</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Are you sure you want to delete #{channel.name}? This
-                        action cannot be undone.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={onDelete}
-                        className="bg-red-600 hover:bg-red-700"
-                    >
-                        Delete
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    )
-}
 
 function ChannelButton({
     channel,
