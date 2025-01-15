@@ -137,8 +137,6 @@ export function useChatStore(
     // Update active channel ID when channelId changes
     useEffect(() => {
         if (channelId) {
-            console.log('Setting active channel ID in useChatStore:', channelId)
-
             setActiveChannelId(channelId)
         }
     }, [channelId, setActiveChannelId])

@@ -1,53 +1,67 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 const IDLE_TIMEOUT = 30000 // 30 seconds
+const CHECK_INTERVAL = 5000 // Check every 5 seconds instead of every second
+const ACTIVITY_THRESHOLD = 5000 // Minimum time between activity updates
 
 export function useIdleDetection() {
     const [isIdle, setIsIdle] = useState(false)
     const [lastActivity, setLastActivity] = useState(Date.now())
 
-    // Memoize the activity handler to prevent recreating it on each render
     const handleActivity = useCallback(() => {
-        setLastActivity(Date.now())
-        setIsIdle(false)
-    }, [])
-
-    // Memoize the idle check to prevent recreating it on each render
-    const checkIdle = useCallback(() => {
         const now = Date.now()
-        const timeSinceLastActivity = now - lastActivity
+        const timeSinceLastUpdate = now - lastActivity
 
-        if (timeSinceLastActivity >= IDLE_TIMEOUT && !isIdle) {
-            setIsIdle(true)
+        // Only update if:
+        // 1. User was previously idle OR
+        // 2. Significant time has passed since last update
+        if (isIdle || timeSinceLastUpdate > ACTIVITY_THRESHOLD) {
+            setLastActivity(now)
+            if (isIdle) setIsIdle(false)
         }
-    }, [lastActivity, isIdle])
+    }, [isIdle, lastActivity])
 
     useEffect(() => {
-        let timeoutId: NodeJS.Timeout | undefined
+        let activityTimer: ReturnType<typeof setTimeout>
+        let isProcessingActivity = false
 
-        // Set up event listeners for user activity
-        window.addEventListener('mousemove', handleActivity)
-        window.addEventListener('mousedown', handleActivity)
-        window.addEventListener('keypress', handleActivity)
-        window.addEventListener('touchstart', handleActivity)
-        window.addEventListener('scroll', handleActivity)
+        const processActivity = () => {
+            if (!isProcessingActivity) {
+                isProcessingActivity = true
+                handleActivity()
 
-        // Set up interval to check idle status
-        const intervalId = setInterval(checkIdle, 1000)
-
-        // Cleanup
-        return () => {
-            window.removeEventListener('mousemove', handleActivity)
-            window.removeEventListener('mousedown', handleActivity)
-            window.removeEventListener('keypress', handleActivity)
-            window.removeEventListener('touchstart', handleActivity)
-            window.removeEventListener('scroll', handleActivity)
-            clearInterval(intervalId)
-            if (timeoutId) clearTimeout(timeoutId)
+                // Reset processing flag after throttle period
+                setTimeout(() => {
+                    isProcessingActivity = false
+                }, 1000)
+            }
         }
-    }, [handleActivity, checkIdle]) // Only re-run effect when these callbacks change
+
+        // Combine multiple events into a single handler
+        const events = ['mousemove', 'keydown', 'touchstart']
+        events.forEach(event =>
+            window.addEventListener(event, processActivity, { passive: true }),
+        )
+
+        // Set up idle check interval
+        const checkIdle = () => {
+            const now = Date.now()
+            if (now - lastActivity >= IDLE_TIMEOUT && !isIdle) {
+                setIsIdle(true)
+            }
+        }
+
+        const intervalId = setInterval(checkIdle, CHECK_INTERVAL)
+
+        return () => {
+            events.forEach(event =>
+                window.removeEventListener(event, processActivity),
+            )
+            clearInterval(intervalId)
+        }
+    }, [handleActivity, isIdle, lastActivity])
 
     return { isIdle, lastActivity }
 }

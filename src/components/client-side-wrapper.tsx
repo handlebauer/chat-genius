@@ -10,12 +10,13 @@ import { ChannelList } from './channel-list'
 import { ChatTitle } from './chat-title'
 import { MessageSearch } from './message-search'
 import { UserMenu } from './user-menu'
-import { Channel, UserData, useStore } from '@/lib/store'
+import { Channel, UserData, useStore, useIsChannelMember } from '@/lib/store'
 import { MembersSidebar } from './members-sidebar'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { JoinChannelPrompt } from './join-channel-prompt'
 import { ChannelMember, ChannelMemberships } from '@/hooks/use-chat-data'
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
+import { useDebugRender } from '@/hooks/use-debug-render'
 
 interface ClientSideWrapperProps {
     channelId: string
@@ -36,23 +37,37 @@ export function ClientSideWrapper({
 }: ClientSideWrapperProps) {
     const { channels, directMessages, currentChannel, isHydrated } =
         useChatStore(channelId, initialData)
-    const isChannelMember = useStore(state => state.isChannelMember)
 
-    const systemUserId = useMemo(
-        () =>
+    const isChannelMember = useIsChannelMember()
+
+    useDebugRender('ClientSideWrapper', {
+        channelId,
+        'userData.id': userData.id,
+        'initialData.channels.length': initialData.channels.length,
+        'currentChannelMembers.length': currentChannelMembers.length,
+        'currentChannel?.id': currentChannel?.id,
+        isHydrated: isHydrated,
+    })
+
+    const systemUserId = useMemo(() => {
+        console.log('[Memo] systemUserId recalculating')
+        return (
             currentChannelMembers.find(
                 member => member.email === 'ai-bot@test.com',
-            )?.id || '',
-        [currentChannelMembers],
+            )?.id || ''
+        )
+    }, [currentChannelMembers])
+
+    const isMember = useMemo(
+        () =>
+            currentChannel?.channel_type === 'direct_message' ||
+            (currentChannel && isChannelMember(currentChannel.id)),
+        [currentChannel, isChannelMember],
     )
 
     if (!isHydrated || !currentChannel) {
         return null
     }
-
-    const isMember =
-        currentChannel.channel_type === 'direct_message' ||
-        isChannelMember(currentChannel.id)
 
     return (
         <>

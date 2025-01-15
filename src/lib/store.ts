@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Database } from '@/lib/supabase/types'
 import { ChannelMemberships } from '@/hooks/use-chat-data'
+import { useShallow } from 'zustand/react/shallow'
 
 // Types
 interface ThreadReply {
@@ -377,3 +378,10 @@ export const useStore = create<Store>((set, get) => ({
         })),
     getMentionedUser: userId => get().mentionedUsers[userId],
 }))
+
+// Create a stable selector at the module level
+const selectIsChannelMemberFn = (state: Store) => state.isChannelMember
+
+// Export a hook that uses the stable selector with shallow comparison
+export const useIsChannelMember = () =>
+    useStore(useShallow(selectIsChannelMemberFn))
