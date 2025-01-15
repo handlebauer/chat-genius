@@ -13,6 +13,7 @@ export function useScrollToBottom({
 }: UseScrollToBottomProps) {
     const scrollAreaRef = useRef<HTMLDivElement>(null)
     const prevMessageLengthRef = useRef(messages.length)
+    const prevChannelIdRef = useRef<string>(null)
 
     const scrollToBottom = () => {
         if (scrollAreaRef.current) {
@@ -20,7 +21,16 @@ export function useScrollToBottom({
                 '[data-radix-scroll-area-viewport]',
             )
             if (scrollContainer) {
-                scrollContainer.scrollTop = scrollContainer.scrollHeight
+                const images = Array.from(scrollContainer.getElementsByTagName('img'))
+                Promise.all(
+                    images.map(img =>
+                        img.complete
+                            ? Promise.resolve()
+                            : new Promise(resolve => img.onload = resolve)
+                    )
+                ).then(() => {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight
+                })
             }
         }
     }
@@ -28,23 +38,30 @@ export function useScrollToBottom({
     // Handle automatic scrolling when message length changes or component mounts
     useEffect(() => {
         const messageLength = messages.length
+        const currentChannelId = messages[0]?.channel_id
+
         if (
             shouldScrollToBottom &&
             (messageLength > prevMessageLengthRef.current || // New message added
-                prevMessageLengthRef.current === 0) // Initial load
+                prevMessageLengthRef.current === 0)  || // Initial load
+            currentChannelId !== prevChannelIdRef.current // Channel switched
         ) {
             scrollToBottom()
         }
+
         prevMessageLengthRef.current = messageLength
+        prevChannelIdRef.current = currentChannelId
     }, [messages.length, shouldScrollToBottom])
 
     // Reset shouldScrollToBottom when switching channels
     useEffect(() => {
-        if (messages[0]?.channel_id) {
+        const currentChannelId = messages[0]?.channel_id
+        if (currentChannelId && currentChannelId !== prevChannelIdRef.current) {
             setShouldScrollToBottom(true)
             scrollToBottom()
+            prevChannelIdRef.current = currentChannelId
         }
-    }, [messages[0]?.channel_id])
+    }, [messages[0]?.channel_id, setShouldScrollToBottom])
 
     return {
         scrollAreaRef,
