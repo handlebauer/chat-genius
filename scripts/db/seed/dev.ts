@@ -235,7 +235,7 @@ async function createPrivateChannel() {
         const { data: channel, error } = await supabase
             .from('channels')
             .insert({
-                name: 'private-announcements',
+                name: 'hush-hush',
                 is_private: true,
                 password_hash: passwordHash,
                 channel_type: 'channel',
