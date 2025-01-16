@@ -16,7 +16,7 @@ import { DirectMessageUser } from './direct-message-user'
 import { getStatusColor } from '@/lib/utils/status'
 import type { DMUser } from '@/hooks/use-chat-data'
 import type { Channel } from '@/lib/store'
-import { useDebugRender } from '@/hooks/use-debug-render'
+import { botUserConfig } from '@/config'
 
 interface DirectMessagesListProps {
     userData: {
@@ -81,6 +81,14 @@ export function DirectMessagesList({
 
                 if (!dmUser) return null
 
+                // Always set bot as online, before any other status checks
+                if (dmUser.email === botUserConfig.email) {
+                    return {
+                        ...dmUser,
+                        status: 'online',
+                    } as DMUserWithStatus
+                }
+
                 return {
                     ...dmUser,
                     status: onlineUser?.status || 'offline',
@@ -141,6 +149,11 @@ export function DirectMessagesList({
     // Sort users by recent messages, online status, and name
     const sortedDmUsers = useMemo(() => {
         return [...dmUsersWithStatus].sort((a, b) => {
+            // Always put bot user first, regardless of any other criteria
+            if (a.email === botUserConfig.email) return -1
+            if (b.email === botUserConfig.email) return 1
+
+            // Rest of sorting logic for non-bot users
             // First sort by most recent message
             if (a.lastMessageAt && b.lastMessageAt) {
                 if (a.lastMessageAt > b.lastMessageAt) return -1

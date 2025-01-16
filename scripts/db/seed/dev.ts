@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
-import { config } from '@/config'
+import { config, botUserConfig } from '@/config'
 import { testUsers, generalMessages, aiMessages } from './data'
 
 // Initialize Supabase client
@@ -26,12 +26,7 @@ async function createSystemUser() {
     try {
         const { data: user, error } = await supabase
             .from('users')
-            .insert({
-                email: 'ai-bot@test.com',
-                name: 'AI Test Bot',
-                avatar_url:
-                    'https://api.dicebear.com/7.x/bottts/svg?seed=ai-test',
-            })
+            .insert(botUserConfig)
             .select()
             .single()
 
@@ -214,7 +209,7 @@ async function clearExistingData() {
         }
 
         // Delete system user
-        await supabase.from('users').delete().eq('email', 'ai-bot@test.com')
+        await supabase.from('users').delete().eq('email', botUserConfig.email)
 
         console.log('Cleared existing test data')
     } catch (error) {

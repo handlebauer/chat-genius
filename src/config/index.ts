@@ -2,6 +2,13 @@ import { z } from 'zod'
 
 const envSchema = z.enum(['development', 'test', 'production'])
 
+// Add bot user configuration
+export const botUserConfig = {
+    email: 'ai-bot@test.com',
+    name: 'AI Bot',
+    avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=ai-test',
+} as const
+
 const configSchema = z.object({
     NODE_ENV: envSchema.default('development'),
     // Supabase configuration
