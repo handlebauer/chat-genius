@@ -5,8 +5,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { ChannelMember } from '@/hooks/use-chat-data'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import type { Channel } from '@/lib/store'
+import type { Channel, UserData } from '@/lib/store'
 import { createDM } from '@/lib/actions/create-dm'
+import { useStore } from '@/lib/store'
 
 interface MemberItemProps {
     member: ChannelMember
@@ -26,6 +27,7 @@ export const MemberItem = memo(function MemberItem({
     channels,
 }: MemberItemProps) {
     const router = useRouter()
+    const setDMParticipant = useStore(state => state.setDMParticipant)
 
     const handleUserClick = useCallback(
         async (otherUserId: string) => {
@@ -33,6 +35,17 @@ export const MemberItem = memo(function MemberItem({
             if (otherUserId === currentUserId) return
 
             try {
+                // Transform member into UserData type
+                const userData: UserData = {
+                    id: member.id,
+                    name: member.name,
+                    email: member.email,
+                    avatar_url: member.avatar_url,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    status: null,
+                }
+
                 // Check for existing DM channel
                 const dmName = `dm:${currentUserId}_${otherUserId}`
                 const altDmName = `dm:${otherUserId}_${currentUserId}`
@@ -43,18 +56,20 @@ export const MemberItem = memo(function MemberItem({
                 )
 
                 if (existingChannel) {
-                    // If DM exists, just navigate to it
+                    // Store participant info and navigate
+                    setDMParticipant(existingChannel.id, userData)
                     router.push(`/chat/${existingChannel.id}`)
                 } else {
-                    // Create new DM channel if none exists and navigate to it
+                    // Create new DM channel, store participant info and navigate
                     const channel = await createDM(currentUserId, otherUserId)
+                    setDMParticipant(channel.id, userData)
                     router.push(`/chat/${channel.id}`)
                 }
             } catch (error) {
                 console.error('Failed to create or navigate to DM:', error)
             }
         },
-        [currentUserId, router, channels],
+        [currentUserId, router, channels, member, setDMParticipant],
     )
 
     return (

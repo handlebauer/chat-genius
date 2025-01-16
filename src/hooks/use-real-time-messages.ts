@@ -70,10 +70,18 @@ export function useRealTimeMessages(channelId: string) {
     const addMessage = useStore(state => state.addMessage)
     const userData = useStore(state => state.userData)
     const addMentionedUsers = useStore(state => state.addMentionedUsers)
+    const markChannelInitialized = useStore(
+        state => state.markChannelInitialized,
+    )
+    const initializedChannels = useStore(state => state.initializedChannels)
 
     // Load initial messages
     useEffect(() => {
         if (!channelId || !userData) return
+
+        // Skip loading if we've already initialized this channel
+        if (initializedChannels.has(channelId)) return
+
         const currentUserId = userData.id
 
         async function loadMessages() {
@@ -298,6 +306,7 @@ export function useRealTimeMessages(channelId: string) {
 
             setMessages(channelId, messagesWithThreadsAndReactions)
             setMessagesLoading(channelId, false)
+            markChannelInitialized(channelId)
         }
 
         loadMessages()
@@ -308,6 +317,8 @@ export function useRealTimeMessages(channelId: string) {
         setMessages,
         setMessagesLoading,
         addMentionedUsers,
+        initializedChannels,
+        markChannelInitialized,
     ])
 
     // Set up real-time subscription
@@ -605,7 +616,9 @@ export function useRealTimeMessages(channelId: string) {
     return {
         messages: channelId ? messages[channelId] || [] : [],
         loading: channelId
-            ? useStore.getState().messagesLoading[channelId] || false
+            ? !initializedChannels.has(channelId) ||
+              useStore.getState().messagesLoading[channelId] ||
+              false
             : false,
     }
 }

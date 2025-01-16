@@ -11,16 +11,29 @@ export default async function ChatPage() {
         redirect('/login')
     }
 
-    // Get the first channel and redirect to it
-    const { data: channels } = await supabase
+    // Try to get the 'general' channel first
+    let { data: generalChannel } = await supabase
         .from('channels')
         .select('id')
-        .order('created_at')
+        .eq('name', 'general')
+        .single()
+
+    // If 'general' exists, redirect to it
+    if (generalChannel?.id) {
+        redirect(`/chat/${generalChannel.id}`)
+    }
+
+    // If 'general' doesn't exist, fall back to the most recently created channel
+    const { data: latestChannel } = await supabase
+        .from('channels')
+        .select('id')
+        .eq('channel_type', 'channel')
+        .order('created_at', { ascending: false })
         .limit(1)
         .single()
 
-    if (channels?.id) {
-        redirect(`/chat/${channels.id}`)
+    if (latestChannel?.id) {
+        redirect(`/chat/${latestChannel.id}`)
     }
 
     // If no channels exist, redirect to chat root (this shouldn't happen in practice)

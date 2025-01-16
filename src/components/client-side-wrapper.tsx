@@ -10,13 +10,12 @@ import { ChannelList } from './channel-list'
 import { ChatTitle } from './chat-title'
 import { MessageSearch } from './message-search'
 import { UserMenu } from './user-menu'
-import { Channel, UserData, useStore, useIsChannelMember } from '@/lib/store'
+import { Channel, UserData, useIsChannelMember } from '@/lib/store'
 import { MembersSidebar } from './members-sidebar'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { JoinChannelPrompt } from './join-channel-prompt'
 import { ChannelMember, ChannelMemberships } from '@/hooks/use-chat-data'
-import { useMemo, useCallback } from 'react'
-import { useDebugRender } from '@/hooks/use-debug-render'
+import { useMemo } from 'react'
 
 interface ClientSideWrapperProps {
     channelId: string
@@ -39,15 +38,6 @@ export function ClientSideWrapper({
         useChatStore(channelId, initialData)
 
     const isChannelMember = useIsChannelMember()
-
-    useDebugRender('ClientSideWrapper', {
-        channelId,
-        'userData.id': userData.id,
-        'initialData.channels.length': initialData.channels.length,
-        'currentChannelMembers.length': currentChannelMembers.length,
-        'currentChannel?.id': currentChannel?.id,
-        isHydrated: isHydrated,
-    })
 
     const systemUserId = useMemo(() => {
         console.log('[Memo] systemUserId recalculating')

@@ -6,10 +6,8 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useEffect, useRef } from 'react'
 import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
-import { UserData } from '@/lib/store'
-
-// TODO: Set this to true to enable skeleton loading UI for messages
-const ENABLE_SKELETON_LOADING = false
+import { UserData, useStore } from '@/lib/store'
+import { EmptyMessages } from './empty-messages'
 
 interface MessagesSectionProps {
     currentChannelId: string
@@ -24,29 +22,26 @@ export function MessagesSection({
     const loadingEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        // Scroll to bottom when loading state changes
         if (!loading) {
             loadingEndRef.current?.scrollIntoView()
         }
     }, [loading])
 
-    if (loading && ENABLE_SKELETON_LOADING) {
+    // Show loading state during initial hydration or when fetching messages
+    if (loading || !messages) {
+        return <div className="flex-1"></div>
+    }
+
+    // Empty state (only shown after store is hydrated and messages are loaded)
+    if (messages.length === 0) {
         return (
-            <div className="flex-1 p-4 space-y-4">
-                {[...Array(5)].map((_, i) => (
-                    <div key={i} className="flex items-start space-x-4">
-                        <Skeleton className="w-10 h-10 rounded-full" />
-                        <div className="space-y-2 flex-1">
-                            <Skeleton className="h-4 w-[120px]" />
-                            <Skeleton className="h-4 w-full max-w-[600px]" />
-                        </div>
-                    </div>
-                ))}
-                <div ref={loadingEndRef} />
+            <div className="flex-1">
+                <EmptyMessages />
             </div>
         )
     }
 
+    // Messages present state
     return (
         <ErrorBoundary FallbackComponent={MessagesErrorBoundary}>
             <MessageList messages={messages} userData={userData} />

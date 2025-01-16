@@ -9,6 +9,7 @@ import { MessageItem } from './message-item'
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { EmptyMessages } from './empty-messages'
 
 interface ThreadReply {
     id: string
@@ -208,74 +209,84 @@ export function MessageList({ messages, userData }: MessageListProps) {
 
     return (
         <ScrollArea ref={scrollAreaRef} className="flex-1 mr-1">
-            <div className="flex flex-col p-4 pb-3">
-                <div className="space-y-2 flex-1">
-                    {messages.map(message => (
-                        <MessageItem
-                            key={message.id}
-                            message={message}
-                            isHighlighted={
-                                selectedMessageId === message.id &&
-                                isHighlighted
-                            }
-                            openMenuId={openMenuId}
-                            expandedThreadId={
-                                message.thread
-                                    ? expandedThreadIds.has(message.thread.id)
-                                        ? message.thread.id
+            {messages.length === 0 ? (
+                <EmptyMessages />
+            ) : (
+                <div className="flex flex-col p-4 pb-3">
+                    <div className="space-y-2 flex-1">
+                        {messages.map(message => (
+                            <MessageItem
+                                key={message.id}
+                                message={message}
+                                isHighlighted={
+                                    selectedMessageId === message.id &&
+                                    isHighlighted
+                                }
+                                openMenuId={openMenuId}
+                                expandedThreadId={
+                                    message.thread
+                                        ? expandedThreadIds.has(
+                                              message.thread.id,
+                                          )
+                                            ? message.thread.id
+                                            : null
                                         : null
-                                    : null
-                            }
-                            newlyCreatedThreadIds={newThreadIds}
-                            currentUser={userData!}
-                            onOpenMenuChange={(open, messageId) =>
-                                setOpenMenuId(open ? messageId : null)
-                            }
-                            onCreateThread={handleCreateThread}
-                            onThreadToggle={handleThreadToggle}
-                            messageRef={el => {
-                                if (el) messageRefs.current[message.id] = el
-                            }}
-                        />
-                    ))}
-                    {activeChannelId && aiResponseLoading[activeChannelId] && (
-                        <div
-                            className={cn(
-                                'relative transition-colors duration-200 rounded-lg group hover:bg-zinc-100',
-                            )}
-                        >
-                            <div className="flex gap-2 items-start p-1 pb-[2px] relative">
-                                <Avatar className="w-7 h-7 mt-[2px]">
-                                    <AvatarImage
-                                        src="https://api.dicebear.com/7.x/bottts/svg?seed=ai-test"
-                                        alt="AI Test Bot"
-                                    />
-                                    <AvatarFallback className="text-xs">
-                                        AI
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="space-y-0.5 flex-1">
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-sm font-medium">
-                                            AI Test Bot
-                                        </span>
-                                        <span className="text-[11px] text-zinc-500 font-normal">
-                                            {new Date().toLocaleTimeString([], {
-                                                hour: 'numeric',
-                                                minute: '2-digit',
-                                            })}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
-                                        <span>typing...</span>
+                                }
+                                newlyCreatedThreadIds={newThreadIds}
+                                currentUser={userData!}
+                                onOpenMenuChange={(open, messageId) =>
+                                    setOpenMenuId(open ? messageId : null)
+                                }
+                                onCreateThread={handleCreateThread}
+                                onThreadToggle={handleThreadToggle}
+                                messageRef={el => {
+                                    if (el) messageRefs.current[message.id] = el
+                                }}
+                            />
+                        ))}
+                        {activeChannelId &&
+                            aiResponseLoading[activeChannelId] && (
+                                <div
+                                    className={cn(
+                                        'relative transition-colors duration-200 rounded-lg group hover:bg-zinc-100',
+                                    )}
+                                >
+                                    <div className="flex gap-2 items-start p-1 pb-[2px] relative">
+                                        <Avatar className="w-7 h-7 mt-[2px]">
+                                            <AvatarImage
+                                                src="https://api.dicebear.com/7.x/bottts/svg?seed=ai-test"
+                                                alt="AI Test Bot"
+                                            />
+                                            <AvatarFallback className="text-xs">
+                                                AI
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="space-y-0.5 flex-1">
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-sm font-medium">
+                                                    AI Test Bot
+                                                </span>
+                                                <span className="text-[11px] text-zinc-500 font-normal">
+                                                    {new Date().toLocaleTimeString(
+                                                        [],
+                                                        {
+                                                            hour: 'numeric',
+                                                            minute: '2-digit',
+                                                        },
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
+                                                <span>typing...</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
+                            )}
+                    </div>
                 </div>
-            </div>
+            )}
         </ScrollArea>
     )
 }

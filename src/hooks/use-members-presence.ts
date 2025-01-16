@@ -14,7 +14,7 @@ interface MemberPresence {
 
 const STATUS_COLORS = {
     away: 'bg-yellow-500',
-    online: 'bg-emerald-500',
+    online: 'bg-green-500',
     offline: 'bg-zinc-400',
 } as const
 

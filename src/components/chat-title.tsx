@@ -1,5 +1,4 @@
 import { Hash, MoreVertical, LogOut, Trash2 } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Channel, UserData, useStore } from '@/lib/store'
 import { DirectMessageTitle } from './dm-title'
 import { Button } from './ui/button'
@@ -10,10 +9,12 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useChannelManagement } from '@/hooks/use-channel-management'
+import { ChannelMember } from '@/hooks/use-chat-data'
 
 interface ChatTitleProps {
     currentChannel: Channel
     userData: UserData
+    currentChannelMembers?: ChannelMember[]
 }
 
 function ChannelTitle({
@@ -76,13 +77,18 @@ function ChannelTitle({
     )
 }
 
-export function ChatTitle({ currentChannel, userData }: ChatTitleProps) {
+export function ChatTitle({
+    currentChannel,
+    userData,
+    currentChannelMembers,
+}: ChatTitleProps) {
     return (
         <div className="flex items-center justify-center">
             {currentChannel.channel_type === 'direct_message' ? (
                 <DirectMessageTitle
                     currentChannelId={currentChannel.id}
                     userId={userData.id}
+                    currentChannelMembers={currentChannelMembers}
                 />
             ) : (
                 <ChannelTitle channel={currentChannel} userId={userData.id} />

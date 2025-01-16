@@ -2,7 +2,6 @@
 
 import { memo } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useDebugRender } from '@/hooks/use-debug-render'
 import { ChannelMember } from '@/hooks/use-chat-data'
 import { MemberItem } from './member-item'
 import { useMembersPresence } from '@/hooks/use-members-presence'
@@ -21,12 +20,6 @@ export const MembersSidebar = memo(function MembersSidebar({
     userId,
     systemUserId,
 }: MembersSidebarProps) {
-    useDebugRender('MembersSidebar', {
-        'members.length': members.length,
-        userId,
-        systemUserId,
-    })
-
     // Use shallow comparison for channels to prevent unnecessary re-renders
     const channels = useStore(useShallow(state => state.channels))
 

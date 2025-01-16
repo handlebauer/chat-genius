@@ -61,6 +61,7 @@ interface MessagesState {
     selectedMessageId: string | null // Track selected message for scrolling
     aiResponseLoading: Record<string, boolean> // Track AI response loading state per channel
     pendingAiMessageTime: Record<string, string> // Track timestamp of pending AI message per channel
+    initializedChannels: Set<string> // Track which channels have been initialized
     addMessage: (channelId: string | undefined, message: Message) => void
     setMessages: (channelId: string | undefined, messages: Message[]) => void
     setMessagesLoading: (
@@ -87,6 +88,7 @@ interface MessagesState {
         emoji: string,
         userId: string,
     ) => void
+    markChannelInitialized: (channelId: string) => void
 }
 
 interface OnlineUsersState {
@@ -119,13 +121,19 @@ interface ChannelsState {
     isChannelMember: (channelId: string) => boolean
 }
 
+interface DMParticipantsState {
+    dmParticipants: Record<string, UserData> // Keyed by channel_id
+    setDMParticipant: (channelId: string, participant: UserData) => void
+}
+
 // Combined store type
 interface Store
     extends MessagesState,
         OnlineUsersState,
         UserState,
         ChannelsState,
-        MentionedUsersState {}
+        MentionedUsersState,
+        DMParticipantsState {}
 
 // Create store
 export const useStore = create<Store>((set, get) => ({
@@ -135,6 +143,7 @@ export const useStore = create<Store>((set, get) => ({
     selectedMessageId: null,
     aiResponseLoading: {},
     pendingAiMessageTime: {},
+    initializedChannels: new Set<string>(),
     addMessage: (channelId, message) => {
         if (typeof channelId !== 'string') return
 
@@ -189,6 +198,13 @@ export const useStore = create<Store>((set, get) => ({
                 [channelId]: loading,
             },
         }))
+    },
+    markChannelInitialized: channelId => {
+        set(state => {
+            const newInitializedChannels = new Set(state.initializedChannels)
+            newInitializedChannels.add(channelId)
+            return { initializedChannels: newInitializedChannels }
+        })
     },
     setAiResponseLoading: (channelId, loading, pendingMessageTime) => {
         if (typeof channelId !== 'string') return
@@ -332,37 +348,19 @@ export const useStore = create<Store>((set, get) => ({
         return get().channelMemberships[channelId] || false
     },
     getDMParticipant: (channelId, currentUserId) => {
-        const { channels, messages, onlineUsers } = get()
+        const { channels, dmParticipants } = get()
+
+        if (!channelId) return null
+
         const channel = channels.find(c => c.id === channelId)
         if (!channel || channel.channel_type !== 'direct_message') return null
 
-        // Extract user IDs from the channel name (format: dm:userId1_userId2)
-        const userIds = channel.name.slice(3).split('_')
-        const otherUserId = userIds.find(id => id !== currentUserId)
-        if (!otherUserId) return null
-
-        // Try to find the other user from multiple sources
-        // 1. Check message history for user data (most complete data)
-        const channelMessages = messages[channel.id] || []
-        const userFromMessages = channelMessages.find(
-            msg => msg.sender.id === otherUserId,
-        )?.sender
-        if (userFromMessages) return userFromMessages
-
-        // 2. Check online users
-        const onlineUser = onlineUsers.find(u => u.id === otherUserId)
-        if (onlineUser) {
-            return {
-                id: onlineUser.id,
-                name: onlineUser.name,
-                email: onlineUser.email || '',
-                avatar_url: null,
-                status: 'online',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            }
+        // Check our stored DM participants
+        if (dmParticipants[channelId]) {
+            return dmParticipants[channelId]
         }
 
+        // Return null if we don't have the participant info
         return null
     },
 
@@ -377,6 +375,16 @@ export const useStore = create<Store>((set, get) => ({
             },
         })),
     getMentionedUser: userId => get().mentionedUsers[userId],
+
+    // DM participants slice
+    dmParticipants: {},
+    setDMParticipant: (channelId, participant) =>
+        set(state => ({
+            dmParticipants: {
+                ...state.dmParticipants,
+                [channelId]: participant,
+            },
+        })),
 }))
 
 // Create a stable selector at the module level
