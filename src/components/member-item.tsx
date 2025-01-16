@@ -27,7 +27,6 @@ export const MemberItem = memo(function MemberItem({
     channels,
 }: MemberItemProps) {
     const router = useRouter()
-    const setDMParticipant = useStore(state => state.setDMParticipant)
 
     const handleUserClick = useCallback(
         async (otherUserId: string) => {
@@ -57,19 +56,21 @@ export const MemberItem = memo(function MemberItem({
 
                 if (existingChannel) {
                     // Store participant info and navigate
-                    setDMParticipant(existingChannel.id, userData)
+                    useStore
+                        .getState()
+                        .setDMParticipant(existingChannel.id, userData)
                     router.push(`/chat/${existingChannel.id}`)
                 } else {
                     // Create new DM channel, store participant info and navigate
                     const channel = await createDM(currentUserId, otherUserId)
-                    setDMParticipant(channel.id, userData)
+                    useStore.getState().setDMParticipant(channel.id, userData)
                     router.push(`/chat/${channel.id}`)
                 }
             } catch (error) {
                 console.error('Failed to create or navigate to DM:', error)
             }
         },
-        [currentUserId, router, channels, member, setDMParticipant],
+        [currentUserId, router, channels, member],
     )
 
     return (

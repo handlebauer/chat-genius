@@ -14,16 +14,29 @@ import { Channel, UserData, useIsChannelMember } from '@/lib/store'
 import { MembersSidebar } from './members-sidebar'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { JoinChannelPrompt } from './join-channel-prompt'
-import { ChannelMember, ChannelMemberships } from '@/hooks/use-chat-data'
+import {
+    ChannelMember,
+    ChannelMemberships,
+    DMUser,
+} from '@/hooks/use-chat-data'
 import { useMemo } from 'react'
 
 interface ClientSideWrapperProps {
     channelId: string
-    userData: UserData
+    userData: {
+        id: string
+        name: string | null
+        email: string
+        avatar_url: string | null
+        created_at: string | null
+        updated_at: string | null
+        status: string | null
+    }
     initialData: {
         channels: Channel[]
         directMessages: Channel[]
         channelMemberships: ChannelMemberships
+        dmUsers: Record<string, DMUser>
     }
     currentChannelMembers: ChannelMember[]
 }
@@ -55,7 +68,13 @@ export function ClientSideWrapper({
         [currentChannel, isChannelMember],
     )
 
-    if (!isHydrated || !currentChannel) {
+    if (!isHydrated) {
+        console.log('Not hydrated')
+        return null
+    }
+
+    if (!currentChannel) {
+        console.log('No current channel')
         return null
     }
 
@@ -75,6 +94,7 @@ export function ClientSideWrapper({
                         userData={userData}
                         currentChannel={currentChannel}
                         directMessages={directMessages}
+                        dmUsers={initialData.dmUsers}
                     />
                 </ScrollArea>
             </div>

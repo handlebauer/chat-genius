@@ -13,6 +13,7 @@ export async function ChatInterface({ user, channelId }: ChatInterfaceProps) {
     const chatData = await useChatData(user, channelId)
 
     if (!chatData) {
+        console.log('Chat data is not available')
         return null
     }
 
@@ -22,6 +23,7 @@ export async function ChatInterface({ user, channelId }: ChatInterfaceProps) {
         directMessages,
         currentChannelMembers,
         channelMemberships,
+        dmUsers,
     } = chatData
 
     return (
@@ -29,7 +31,12 @@ export async function ChatInterface({ user, channelId }: ChatInterfaceProps) {
             <ClientSideWrapper
                 channelId={channelId}
                 userData={userData}
-                initialData={{ channels, directMessages, channelMemberships }}
+                initialData={{
+                    channels,
+                    directMessages,
+                    channelMemberships,
+                    dmUsers,
+                }}
                 currentChannelMembers={currentChannelMembers}
             />
         </div>

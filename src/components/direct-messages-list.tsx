@@ -1,87 +1,54 @@
 'use client'
 
+import { useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Circle } from 'lucide-react'
+import { Circle, ChevronDown } from 'lucide-react'
 import {
     Collapsible,
-    CollapsibleTrigger,
     CollapsibleContent,
+    CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { ChevronDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useDMs } from '@/hooks/use-dms'
 import { useOnlineUsers } from '@/hooks/use-online-users'
 import { useIdleDetection } from '@/hooks/use-idle-detection'
-import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, memo } from 'react'
-import { cn } from '@/lib/utils'
-import { Channel, UserData } from '@/lib/store'
-import { useDMs } from '@/hooks/use-dms'
-
-const getStatusColor = (status?: string) => {
-    switch (status) {
-        case 'away':
-            return 'text-yellow-500'
-        case 'online':
-            return 'text-green-500'
-        default:
-            return 'text-gray-500'
-    }
-}
+import { DirectMessageUser } from './direct-message-user'
+import { getStatusColor } from '@/lib/utils/status'
+import type { DMUser } from '@/hooks/use-chat-data'
 
 interface DirectMessagesListProps {
-    userData: UserData
-    currentChannel: Channel
-    directMessages: Channel[]
-}
-
-interface DirectMessageUserProps {
-    user: {
+    userData: {
         id: string
-        name?: string
-        email?: string
-        status?: string
+        name: string | null
+        email: string
     }
-    isActive: boolean
-    onClick: () => void
+    currentChannel: {
+        id: string
+        name: string
+        channel_type: string
+    }
+    directMessages: Array<{
+        id: string
+        name: string
+        channel_type: 'channel' | 'direct_message'
+        created_at: string | null
+        created_by: string | null
+        is_private: boolean | null
+        updated_at: string | null
+    }>
+    dmUsers: Record<string, DMUser>
 }
 
-const DirectMessageUser = memo(function DirectMessageUser({
-    user,
-    isActive,
-    onClick,
-}: DirectMessageUserProps) {
-    const buttonClassName = useMemo(
-        () =>
-            cn(
-                'flex items-center gap-1 justify-start w-full hover:bg-zinc-200 py-1 h-auto',
-                isActive && 'bg-zinc-200',
-            ),
-        [isActive],
-    )
-
-    const statusClassName = useMemo(
-        () => `scale-[0.5] ${getStatusColor(user.status)} fill-current`,
-        [user.status],
-    )
-
-    const displayName = useMemo(
-        () => user.name || user.email,
-        [user.name, user.email],
-    )
-
-    if (!displayName) return null
-
-    return (
-        <Button variant="ghost" className={buttonClassName} onClick={onClick}>
-            <Circle className={statusClassName} />
-            {displayName}
-        </Button>
-    )
-})
+interface DMUserWithStatus extends DMUser {
+    status: string
+}
 
 export function DirectMessagesList({
     userData,
     currentChannel,
     directMessages: initialDirectMessages,
+    dmUsers,
 }: DirectMessagesListProps) {
     const userId = userData.id
     const { directMessages } = useDMs(currentChannel.id, initialDirectMessages)
@@ -104,17 +71,23 @@ export function DirectMessagesList({
     }, [directMessages, userId])
 
     // Get DM users with their online status
-    const dmUsers = useMemo(() => {
-        return dmUserIds.map(dmUserId => {
-            const onlineUser = onlineUsers.find(user => user.id === dmUserId)
-            return {
-                id: dmUserId,
-                name: onlineUser?.name,
-                email: onlineUser?.email,
-                status: onlineUser?.status || 'offline',
-            }
-        })
-    }, [dmUserIds, onlineUsers])
+    const dmUsersWithStatus = useMemo(() => {
+        return dmUserIds
+            .map(dmUserId => {
+                const onlineUser = onlineUsers.find(
+                    user => user.id === dmUserId,
+                )
+                const dmUser = dmUsers[dmUserId]
+
+                if (!dmUser) return null
+
+                return {
+                    ...dmUser,
+                    status: onlineUser?.status || 'offline',
+                } as DMUserWithStatus
+            })
+            .filter((user): user is DMUserWithStatus => user !== null)
+    }, [dmUserIds, onlineUsers, dmUsers])
 
     const handleUserClick = useCallback(
         async (otherUserId: string) => {
@@ -166,6 +139,30 @@ export function DirectMessagesList({
         [userData.name, userData.email],
     )
 
+    // Sort users by recent messages, online status, and name
+    const sortedDmUsers = useMemo(() => {
+        return [...dmUsersWithStatus].sort((a, b) => {
+            // First sort by most recent message
+            if (a.lastMessageAt && b.lastMessageAt) {
+                if (a.lastMessageAt > b.lastMessageAt) return -1
+                if (a.lastMessageAt < b.lastMessageAt) return 1
+            } else if (a.lastMessageAt) {
+                return -1
+            } else if (b.lastMessageAt) {
+                return 1
+            }
+
+            // Then sort by online status
+            if (a.status === 'online' && b.status !== 'online') return -1
+            if (a.status !== 'online' && b.status === 'online') return 1
+
+            // Finally sort by name
+            const aName = a.name || a.email || ''
+            const bName = b.name || b.email || ''
+            return aName.localeCompare(bName)
+        })
+    }, [dmUsersWithStatus])
+
     return (
         <Collapsible defaultOpen className="px-2">
             <div className="flex items-center px-2 py-2">
@@ -190,7 +187,7 @@ export function DirectMessagesList({
                         </span>
                     </Button>
 
-                    {dmUsers.map(user => (
+                    {sortedDmUsers.map(user => (
                         <DirectMessageUser
                             key={user.id}
                             user={user}

@@ -186,10 +186,7 @@ async function clearExistingData() {
 
     try {
         // Delete messages in both channels
-        const { data: channels } = await supabase
-            .from('channels')
-            .select('id')
-            .in('name', ['general', 'ai-test'])
+        const { data: channels } = await supabase.from('channels').select('id')
 
         if (channels) {
             for (const channel of channels) {
@@ -197,11 +194,15 @@ async function clearExistingData() {
                     .from('messages')
                     .delete()
                     .eq('channel_id', channel.id)
+                await supabase
+                    .from('channel_members')
+                    .delete()
+                    .eq('channel_id', channel.id)
+                await supabase
+                    .from('channels')
+                    .delete()
+                    .eq('channel_id', channel.id)
             }
-            await supabase
-                .from('channels')
-                .delete()
-                .in('name', ['general', 'ai-test'])
         }
 
         // Delete test users
