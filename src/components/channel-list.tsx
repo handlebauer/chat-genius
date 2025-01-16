@@ -79,19 +79,43 @@ function ChannelButton({
                 )}
             >
                 {channel.is_private ? (
-                    <Lock
-                        className={cn(
-                            'h-4 w-4 shrink-0',
-                            isMember &&
-                                !isActive &&
-                                !isPending &&
-                                !unreadCount &&
-                                'text-zinc-500',
-                            (isActive || isPending || unreadCount > 0) &&
-                                'text-zinc-900',
-                            !isMember && 'text-zinc-400 opacity-50',
-                        )}
-                    />
+                    isMember ? (
+                        <div className="relative">
+                            <Hash
+                                className={cn(
+                                    'h-4 w-4 shrink-0',
+                                    !isActive &&
+                                        !isPending &&
+                                        !unreadCount &&
+                                        'text-zinc-500',
+                                    (isActive ||
+                                        isPending ||
+                                        unreadCount > 0) &&
+                                        'text-zinc-900',
+                                )}
+                            />
+                            <Lock
+                                className={cn(
+                                    'absolute -top-[4.5px] -right-[4.5px] w-1 h-1 scale-50',
+                                    !isActive &&
+                                        !isPending &&
+                                        !unreadCount &&
+                                        'bg-zinc-100',
+                                    (isActive ||
+                                        isPending ||
+                                        unreadCount > 0) &&
+                                        'bg-zinc-200',
+                                )}
+                            />
+                        </div>
+                    ) : (
+                        <Lock
+                            className={cn(
+                                'h-4 w-4 shrink-0',
+                                'text-zinc-400 opacity-50',
+                            )}
+                        />
+                    )
                 ) : (
                     <Hash
                         className={cn(
@@ -195,6 +219,20 @@ function CreateChannelDialog() {
         }
     }, [createChannel, name, isPrivate, password, userData])
 
+    const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                const isDisabled =
+                    !name.trim() || (isPrivate && !password.trim())
+                if (!isDisabled) {
+                    handleCreate()
+                }
+            }
+        },
+        [handleCreate, name, isPrivate, password],
+    )
+
     return (
         <DialogContent>
             <DialogHeader>
@@ -203,13 +241,17 @@ function CreateChannelDialog() {
                     Add a new channel for your team to collaborate in.
                 </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <form
+                onSubmit={e => e.preventDefault()}
+                className="grid gap-4 py-4"
+            >
                 <div className="grid gap-2">
                     <Label htmlFor="name">Channel name</Label>
                     <Input
                         id="name"
                         value={name}
                         onChange={e => setName(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="e.g. marketing"
                         className="col-span-3"
                     />
@@ -233,12 +275,13 @@ function CreateChannelDialog() {
                             type="password"
                             value={password}
                             onChange={e => setPassword(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             placeholder="Enter channel password"
                             className="col-span-3"
                         />
                     </div>
                 )}
-            </div>
+            </form>
             <DialogFooter>
                 <Button
                     onClick={handleCreate}
