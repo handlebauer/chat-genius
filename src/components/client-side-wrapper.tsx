@@ -21,6 +21,9 @@ import {
     DMUser,
 } from '@/hooks/use-chat-data'
 import { useMemo } from 'react'
+import { useStore } from '@/lib/store'
+import { useShallow } from 'zustand/react/shallow'
+import { useDebugRender } from '@/hooks/use-debug-render'
 
 interface ClientSideWrapperProps {
     channelId: string
@@ -50,6 +53,8 @@ export function ClientSideWrapper({
 }: ClientSideWrapperProps) {
     const { channels, directMessages, currentChannel, isHydrated } =
         useChatStore(channelId, initialData)
+
+    const dmParticipants = useStore(useShallow(state => state.dmParticipants))
 
     const isChannelMember = useIsChannelMember()
 
@@ -95,7 +100,7 @@ export function ClientSideWrapper({
                         userData={userData}
                         currentChannel={currentChannel}
                         directMessages={directMessages}
-                        dmUsers={initialData.dmUsers}
+                        dmUsers={dmParticipants}
                     />
                 </ScrollArea>
             </div>

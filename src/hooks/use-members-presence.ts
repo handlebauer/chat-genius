@@ -44,7 +44,6 @@ export function useMembersPresence(
 
         // Set a new timeout
         debounceTimeout.current = setTimeout(() => {
-            console.log('[useMembersPresence] Updating debounced state')
             setDebouncedState({ onlineUsers, isIdle })
         }, DEBOUNCE_MS)
 
@@ -58,11 +57,6 @@ export function useMembersPresence(
 
     // Create a stable reference for the online status map using debounced values
     const onlineStatusMap = useMemo(() => {
-        console.log('[useMembersPresence] Recomputing status map', {
-            membersLength: members.length,
-            onlineUsersLength: debouncedState.onlineUsers.length,
-            isIdle: debouncedState.isIdle,
-        })
         const map = new Map<string, PresenceStatus>()
 
         // Pre-compute all statuses

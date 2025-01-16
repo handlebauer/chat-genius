@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Circle, ChevronDown } from 'lucide-react'
@@ -10,12 +10,13 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
-import { useDMs } from '@/hooks/use-dms'
 import { useOnlineUsers } from '@/hooks/use-online-users'
 import { useIdleDetection } from '@/hooks/use-idle-detection'
 import { DirectMessageUser } from './direct-message-user'
 import { getStatusColor } from '@/lib/utils/status'
 import type { DMUser } from '@/hooks/use-chat-data'
+import type { Channel } from '@/lib/store'
+import { useDebugRender } from '@/hooks/use-debug-render'
 
 interface DirectMessagesListProps {
     userData: {
@@ -28,15 +29,7 @@ interface DirectMessagesListProps {
         name: string
         channel_type: string
     }
-    directMessages: Array<{
-        id: string
-        name: string
-        channel_type: 'channel' | 'direct_message'
-        created_at: string | null
-        created_by: string | null
-        is_private: boolean | null
-        updated_at: string | null
-    }>
+    directMessages: Channel[]
     dmUsers: Record<string, DMUser>
 }
 
@@ -47,21 +40,17 @@ interface DMUserWithStatus extends DMUser {
 export function DirectMessagesList({
     userData,
     currentChannel,
-    directMessages: initialDirectMessages,
+    directMessages,
     dmUsers,
 }: DirectMessagesListProps) {
     const userId = userData.id
-    const { directMessages } = useDMs(
-        currentChannel.id,
-        userId,
-        initialDirectMessages,
-    )
     const { onlineUsers } = useOnlineUsers({ userId })
     const { isIdle } = useIdleDetection()
     const router = useRouter()
 
-    // Extract unique user IDs from DM channels
+    // Extract unique user IDs from DM channels - memoized with stable references
     const dmUserIds = useMemo(() => {
+        console.log('[DirectMessagesList] Recalculating dmUserIds')
         const userIds = new Set<string>()
         directMessages.forEach(channel => {
             if (channel.channel_type === 'direct_message') {
@@ -72,10 +61,11 @@ export function DirectMessagesList({
             }
         })
         return Array.from(userIds)
-    }, [directMessages, userId, dmUsers])
+    }, [directMessages.length, userId, Object.keys(dmUsers).length])
 
-    // Get DM users with their online status
+    // Get DM users with their online status - with debug
     const dmUsersWithStatus = useMemo(() => {
+        console.log('[DirectMessagesList] Recalculating dmUsersWithStatus')
         return dmUserIds
             .map(dmUserId => {
                 const onlineUser = onlineUsers.find(
@@ -110,20 +100,23 @@ export function DirectMessagesList({
                 router.push(`/chat/${existingChannel.id}`)
             }
         },
-        [userId, router, directMessages, dmUsers],
+        [directMessages, dmUsers, router],
     )
 
-    const isUserActive = (selectedUserId: string) => {
-        if (
-            !currentChannel ||
-            currentChannel.channel_type !== 'direct_message' ||
-            selectedUserId === userId
-        ) {
-            return false
-        }
-        // Check if the selected user is a member of the current channel
-        return dmUsers[currentChannel.id]?.id === selectedUserId
-    }
+    const isUserActive = useCallback(
+        (selectedUserId: string) => {
+            if (
+                !currentChannel ||
+                currentChannel.channel_type !== 'direct_message' ||
+                selectedUserId === userId
+            ) {
+                return false
+            }
+            // Check if the selected user is a member of the current channel
+            return dmUsers[currentChannel.id]?.id === selectedUserId
+        },
+        [currentChannel, userId, dmUsers],
+    )
 
     const currentUserButtonClassName = useMemo(
         () =>
