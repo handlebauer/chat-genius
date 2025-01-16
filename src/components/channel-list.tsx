@@ -143,16 +143,14 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
         }
     }, [createChannel, name, setName])
 
-    // Sort channels: joined channels first, then alphabetically within each group
+    // Sort channels by created_at
     const sortedChannels = useMemo(() => {
         return [...channels].sort((a, b) => {
-            const aMember = isChannelMember(a.id)
-            const bMember = isChannelMember(b.id)
-            if (aMember && !bMember) return -1
-            if (!aMember && bMember) return 1
-            return a.name.localeCompare(b.name)
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
+            return bTime - aTime // Sort in descending order (newest first)
         })
-    }, [channels, isChannelMember])
+    }, [channels])
 
     return (
         <Dialog>
