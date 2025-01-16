@@ -50,6 +50,7 @@ CREATE TABLE channels (
     id TEXT PRIMARY KEY DEFAULT gen_ulid(),
     name TEXT NOT NULL,
     is_private BOOLEAN DEFAULT false,
+    password_hash TEXT,
     channel_type channel_type NOT NULL DEFAULT 'channel',
     created_by UUID REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
@@ -196,3 +197,35 @@ ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Add an index on the channel name for faster lookups
 CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name);
+
+-- Create function to generate password hash
+CREATE OR REPLACE FUNCTION crypt_password(password TEXT)
+RETURNS TEXT AS $$
+BEGIN
+    RETURN crypt(password, gen_salt('bf', 8));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to verify channel password
+CREATE OR REPLACE FUNCTION verify_channel_password(p_channel_id TEXT, p_password TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    stored_hash TEXT;
+BEGIN
+    -- Get the stored password hash for the channel
+    SELECT password_hash INTO stored_hash
+    FROM channels
+    WHERE id = p_channel_id;
+
+    -- If channel doesn't exist or isn't private, return false
+    IF stored_hash IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Verify the password using pgcrypto's crypt function
+    RETURN stored_hash = crypt(p_password, stored_hash);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Enable pgcrypto extension for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;

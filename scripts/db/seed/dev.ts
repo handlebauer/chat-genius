@@ -217,6 +217,61 @@ async function clearExistingData() {
     }
 }
 
+async function createPrivateChannel() {
+    try {
+        // Use pgcrypto's crypt function to hash the password
+        const { data: passwordHash, error: hashError } = await supabase.rpc(
+            'crypt_password',
+            {
+                password: 'secret123',
+            },
+        )
+
+        if (hashError) {
+            console.error('Failed to hash password:', hashError)
+            return
+        }
+
+        const { data: channel, error } = await supabase
+            .from('channels')
+            .insert({
+                name: 'private-announcements',
+                is_private: true,
+                password_hash: passwordHash,
+                channel_type: 'channel',
+                created_by: systemUserId,
+            })
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Failed to create private channel:', error)
+            return
+        }
+
+        console.log('Created private channel:', channel.id)
+
+        // Add system user as channel member
+        await addChannelMember(channel.id, systemUserId!)
+
+        // Add a welcome message explaining the private channel
+        const { error: messageError } = await supabase.from('messages').insert({
+            channel_id: channel.id,
+            content:
+                '🔒 Welcome to the private announcements channel! This channel is password-protected. Share the password (secret123) only with team members who need access to important announcements.',
+            sender_id: systemUserId,
+        })
+
+        if (messageError) {
+            console.error('Failed to create welcome message:', messageError)
+        }
+
+        console.log('Seeded private channel with welcome message')
+    } catch (error) {
+        console.error('Failed to create private channel:', error)
+    }
+}
+
 export async function seedDev() {
     if (config.NODE_ENV !== 'development') {
         console.error('This script can only be run in development environment')
@@ -235,6 +290,7 @@ export async function seedDev() {
     // Create both channels with their respective messages
     await createChannel('general', generalMessages)
     await createChannel('ai-test', aiMessages)
+    await createPrivateChannel()
 
     console.log('Test data seeding completed!')
 }

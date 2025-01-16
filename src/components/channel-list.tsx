@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Hash, ChevronDown, Plus } from 'lucide-react'
+import { Hash, ChevronDown, Plus, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
     Collapsible,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useRouter, useParams } from 'next/navigation'
 import { useChannelManagement } from '@/hooks/use-channel-management'
 import { UserData, useStore } from '@/lib/store'
@@ -26,6 +27,14 @@ import { useCallback, useMemo, useState } from 'react'
 import type { Database } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
 import { useUnreadMessages } from '@/hooks/use-unread-messages'
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type Channel = Database['public']['Tables']['channels']['Row']
 
@@ -55,38 +64,49 @@ function ChannelButton({
                     'flex items-center gap-2 justify-start w-full py-1.5 h-auto',
                     'text-sm hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50',
                     'rounded-md mx-2',
-                    // Base styles - default state (Discord's muted look)
                     isMember &&
                         !isActive &&
                         !isPending &&
                         !unreadCount &&
                         'text-zinc-500 font-normal',
-                    // Active or pending state (Discord's selected channel)
                     (isActive || isPending) &&
                         'bg-zinc-700/10 dark:bg-zinc-700/50 text-zinc-900 font-semibold',
-                    // Unread state (Discord's unread channel)
                     !isActive &&
                         !isPending &&
                         unreadCount > 0 &&
                         'text-zinc-900 font-semibold',
-                    // Not joined state
                     !isMember && 'text-zinc-400 font-normal opacity-50',
                 )}
             >
-                <Hash
-                    className={cn(
-                        'h-4 w-4 shrink-0',
-                        // Hash icon follows the same state rules
-                        isMember &&
-                            !isActive &&
-                            !isPending &&
-                            !unreadCount &&
-                            'text-zinc-500',
-                        (isActive || isPending || unreadCount > 0) &&
-                            'text-zinc-900',
-                        !isMember && 'text-zinc-400 opacity-50',
-                    )}
-                />
+                {channel.is_private ? (
+                    <Lock
+                        className={cn(
+                            'h-4 w-4 shrink-0',
+                            isMember &&
+                                !isActive &&
+                                !isPending &&
+                                !unreadCount &&
+                                'text-zinc-500',
+                            (isActive || isPending || unreadCount > 0) &&
+                                'text-zinc-900',
+                            !isMember && 'text-zinc-400 opacity-50',
+                        )}
+                    />
+                ) : (
+                    <Hash
+                        className={cn(
+                            'h-4 w-4 shrink-0',
+                            isMember &&
+                                !isActive &&
+                                !isPending &&
+                                !unreadCount &&
+                                'text-zinc-500',
+                            (isActive || isPending || unreadCount > 0) &&
+                                'text-zinc-900',
+                            !isMember && 'text-zinc-400 opacity-50',
+                        )}
+                    />
+                )}
                 <span className="truncate">{channel.name}</span>
                 {unreadCount > 0 && (
                     <div
@@ -149,10 +169,166 @@ interface ChannelListProps {
     channels: Channel[]
 }
 
+function CreateChannelDialog() {
+    const [name, setName] = useState('')
+    const [isPrivate, setIsPrivate] = useState(false)
+    const [password, setPassword] = useState('')
+    const userData = useStore(state => state.userData)
+    const { createChannel } = useChannelManagement(userData?.id || '')
+
+    const handleCreate = useCallback(async () => {
+        if (!name.trim() || !userData) return
+        if (isPrivate && !password.trim()) return
+
+        try {
+            await createChannel({
+                name,
+                userId: userData.id,
+                isPrivate,
+                password: isPrivate ? password : undefined,
+            })
+            setName('')
+            setIsPrivate(false)
+            setPassword('')
+        } catch (error) {
+            console.error('[Client] Failed to create channel:', error)
+        }
+    }, [createChannel, name, isPrivate, password, userData])
+
+    return (
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Create a new channel</DialogTitle>
+                <DialogDescription>
+                    Add a new channel for your team to collaborate in.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="name">Channel name</Label>
+                    <Input
+                        id="name"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="e.g. marketing"
+                        className="col-span-3"
+                    />
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="private"
+                        checked={isPrivate}
+                        onCheckedChange={checked => {
+                            setIsPrivate(checked === true)
+                            if (!checked) setPassword('')
+                        }}
+                    />
+                    <Label htmlFor="private">Make channel private</Label>
+                </div>
+                {isPrivate && (
+                    <div className="grid gap-2">
+                        <Label htmlFor="password">Channel password</Label>
+                        <Input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            placeholder="Enter channel password"
+                            className="col-span-3"
+                        />
+                    </div>
+                )}
+            </div>
+            <DialogFooter>
+                <Button
+                    onClick={handleCreate}
+                    disabled={!name.trim() || (isPrivate && !password.trim())}
+                >
+                    Create Channel
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    )
+}
+
+function PasswordDialog({
+    isOpen,
+    onClose,
+    onSubmit,
+    channelName,
+}: {
+    isOpen: boolean
+    onClose: () => void
+    onSubmit: (password: string) => Promise<void>
+    channelName: string
+}) {
+    const [password, setPassword] = useState('')
+    const [error, setError] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const handleSubmit = async () => {
+        if (!password.trim()) return
+        setIsSubmitting(true)
+        setError('')
+
+        try {
+            await onSubmit(password)
+            onClose()
+        } catch (error) {
+            setError('Incorrect password')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    return (
+        <AlertDialog open={isOpen} onOpenChange={onClose}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Enter Channel Password</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The channel "{channelName}" is protected. Please enter
+                        the password to join.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="channel-password">Password</Label>
+                        <Input
+                            id="channel-password"
+                            type="password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            placeholder="Enter channel password"
+                        />
+                        {error && (
+                            <p className="text-sm text-red-500">{error}</p>
+                        )}
+                    </div>
+                </div>
+                <AlertDialogFooter>
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={isSubmitting}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={!password.trim() || isSubmitting}
+                    >
+                        Join Channel
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
+}
+
 export function ChannelList({ userData, channels }: ChannelListProps) {
     const { channelId } = useParams() as { channelId: string }
     const router = useRouter()
-    const [name, setName] = useState('')
     const isChannelMember = useStore(state => state.isChannelMember)
     const unreadCounts = useStore(state => state.unreadCounts)
     const clearUnreadCount = useStore(state => state.clearUnreadCount)
@@ -162,6 +338,15 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
     const pendingActiveChannelId = useStore(
         state => state.pendingActiveChannelId,
     )
+    const [passwordDialogState, setPasswordDialogState] = useState<{
+        isOpen: boolean
+        channelId: string
+        channelName: string
+    }>({
+        isOpen: false,
+        channelId: '',
+        channelName: '',
+    })
 
     const { createChannel, joinChannel } = useChannelManagement(userData.id)
 
@@ -169,54 +354,57 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
     useUnreadMessages(userData.id)
 
     const handleChannelClick = useCallback(
-        async (channelId: string) => {
+        async (channel: Channel) => {
+            // If channel is private and user is not a member, show password dialog
+            if (channel.is_private && !isChannelMember(channel.id)) {
+                setPasswordDialogState({
+                    isOpen: true,
+                    channelId: channel.id,
+                    channelName: channel.name,
+                })
+                return
+            }
+
             // Set pending active channel immediately
-            setPendingActiveChannelId(channelId)
+            setPendingActiveChannelId(channel.id)
 
             // Clear unread count in local state immediately
-            clearUnreadCount(channelId)
+            clearUnreadCount(channel.id)
 
             // Navigate to the channel
-            router.push(`/chat/${channelId}`)
+            router.push(`/chat/${channel.id}`)
 
             // Then clear unread count in the database
             const supabase = createClient()
             await supabase.rpc('reset_unread_count', {
-                p_channel_id: channelId,
+                p_channel_id: channel.id,
                 p_user_id: userData.id,
             })
         },
-        [clearUnreadCount, setPendingActiveChannelId, router, userData.id],
+        [
+            clearUnreadCount,
+            setPendingActiveChannelId,
+            router,
+            userData.id,
+            isChannelMember,
+        ],
     )
 
-    if (!userData) {
-        return (
-            <div className="px-2">
-                <div className="flex items-center px-2 py-2">
-                    <h2 className="text-sm font-semibold text-zinc-500">
-                        Loading channels...
-                    </h2>
-                </div>
-            </div>
-        )
-    }
+    const handlePasswordSubmit = async (password: string) => {
+        const { channelId } = passwordDialogState
+        await joinChannel(channelId, password)
 
-    const handleCreate = useCallback(async () => {
-        if (!name.trim()) return
-        try {
-            await createChannel(name)
-            setName('')
-        } catch (error) {
-            console.error('[Client] Failed to create channel:', error)
-        }
-    }, [createChannel, name, setName])
+        // After successful join, navigate to the channel
+        setPendingActiveChannelId(channelId)
+        router.push(`/chat/${channelId}`)
+    }
 
     // Sort channels by created_at
     const sortedChannels = useMemo(() => {
         return [...channels].sort((a, b) => {
             const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
             const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
-            return bTime - aTime // Sort in descending order (newest first)
+            return bTime - aTime
         })
     }, [channels])
 
@@ -236,10 +424,12 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
                                     isPending={
                                         pendingActiveChannelId === channel.id
                                     }
-                                    onClick={() =>
-                                        handleChannelClick(channel.id)
+                                    onClick={() => handleChannelClick(channel)}
+                                    onJoin={
+                                        !channel.is_private
+                                            ? () => joinChannel(channel.id)
+                                            : undefined
                                     }
-                                    onJoin={() => joinChannel(channel.id)}
                                     isMember={isMember}
                                     unreadCount={unreadCounts[channel.id] || 0}
                                 />
@@ -248,31 +438,15 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
                     </div>
                 </CollapsibleContent>
             </Collapsible>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Create a new channel</DialogTitle>
-                    <DialogDescription>
-                        Add a new channel for your team to collaborate in.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="name">Channel name</Label>
-                        <Input
-                            id="name"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="e.g. marketing"
-                            className="col-span-3"
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button onClick={handleCreate} disabled={!name.trim()}>
-                        Create Channel
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
+            <CreateChannelDialog />
+            <PasswordDialog
+                isOpen={passwordDialogState.isOpen}
+                onClose={() =>
+                    setPasswordDialogState(prev => ({ ...prev, isOpen: false }))
+                }
+                onSubmit={handlePasswordSubmit}
+                channelName={passwordDialogState.channelName}
+            />
         </Dialog>
     )
 }

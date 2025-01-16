@@ -4,6 +4,14 @@ import { createChannel } from '@/lib/actions/create-channel'
 import { deleteChannel } from '@/lib/actions/delete-channel'
 import { leaveChannel } from '@/lib/actions/leave-channel'
 import { joinChannel } from '@/lib/actions/join-channel'
+import { createClient } from '@/lib/supabase/client'
+
+interface CreateChannelParams {
+    name: string
+    userId: string
+    isPrivate?: boolean
+    password?: string
+}
 
 export function useChannelManagement(userId: string) {
     const router = useRouter()
@@ -14,9 +22,9 @@ export function useChannelManagement(userId: string) {
     const isChannelMember = useStore(state => state.isChannelMember)
     const setChannelMemberships = useStore(state => state.setChannelMemberships)
 
-    const handleCreateChannel = async (name: string) => {
+    const handleCreateChannel = async (params: CreateChannelParams) => {
         try {
-            const newChannel = await createChannel(name, userId)
+            const newChannel = await createChannel(params)
             addChannel(newChannel)
             router.push(`/chat/${newChannel.id}`)
         } catch (error) {
@@ -68,12 +76,27 @@ export function useChannelManagement(userId: string) {
         }
     }
 
-    const handleJoinChannel = async (channelId: string) => {
+    const handleJoinChannel = async (channelId: string, password?: string) => {
         if (isChannelMember(channelId)) {
             throw new Error('Already a member of this channel')
         }
 
         try {
+            // If password is provided, verify it first
+            if (password) {
+                console.log('Verifying password for channel:', channelId)
+                const supabase = createClient()
+                const { data: isValid, error: verifyError } =
+                    await supabase.rpc('verify_channel_password', {
+                        p_channel_id: channelId,
+                        p_password: password,
+                    })
+
+                if (verifyError || !isValid) {
+                    throw new Error('Invalid password')
+                }
+            }
+
             await joinChannel(channelId, userId)
             // Update store immediately instead of waiting for real-time update
             const currentMemberships = useStore.getState().channelMemberships

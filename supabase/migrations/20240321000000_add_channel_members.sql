@@ -117,6 +117,16 @@ CREATE POLICY "Allow admins to add members"
                     AND role = 'member'
                 )
                 OR
+                -- Or into private channels if they have the password (verified by server-side code)
+                (
+                    EXISTS (
+                        SELECT 1 FROM channels c
+                        WHERE c.id = channel_id
+                        AND c.is_private
+                    )
+                    AND role = 'member'
+                )
+                OR
                 -- Or if they're an admin of the channel
                 is_channel_admin(channel_id, auth.uid())
             )

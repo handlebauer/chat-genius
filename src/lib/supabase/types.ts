@@ -131,6 +131,7 @@ export type Database = {
           id: string
           is_private: boolean | null
           name: string
+          password_hash: string | null
           updated_at: string | null
         }
         Insert: {
@@ -140,6 +141,7 @@ export type Database = {
           id?: string
           is_private?: boolean | null
           name: string
+          password_hash?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -149,6 +151,7 @@ export type Database = {
           id?: string
           is_private?: boolean | null
           name?: string
+          password_hash?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -380,6 +383,12 @@ export type Database = {
             }
             Returns: unknown
           }
+      crypt_password: {
+        Args: {
+          password: string
+        }
+        Returns: string
+      }
       gen_ulid: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -578,6 +587,13 @@ export type Database = {
           "": unknown[]
         }
         Returns: number
+      }
+      verify_channel_password: {
+        Args: {
+          p_channel_id: string
+          p_password: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
