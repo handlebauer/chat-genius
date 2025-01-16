@@ -9,6 +9,8 @@ import { testUsers, generalMessages, aiMessages } from './data'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
 
+console.log('Supabase URL:', supabaseUrl)
+
 if (!supabaseUrl || !supabaseServiceKey) {
     console.error('Missing Supabase environment variables')
     process.exit(1)
@@ -203,6 +205,7 @@ async function clearExistingData() {
                     .delete()
                     .eq('channel_id', channel.id)
             }
+            console.log(`Cleared ${channels.length} channels`)
         }
 
         // Delete test users

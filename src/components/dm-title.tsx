@@ -16,7 +16,6 @@ export function DirectMessageTitle({
     userId,
     currentChannelMembers,
 }: DirectMessageTitleProps) {
-    console.log(currentChannelMembers, 'currentChannelMembers')
     const participant = useDMParticipant({
         channelId: currentChannelId,
         currentUserId: userId,

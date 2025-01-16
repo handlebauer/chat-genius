@@ -10,9 +10,10 @@ import { ChannelList } from './channel-list'
 import { ChatTitle } from './chat-title'
 import { MessageSearch } from './message-search'
 import { UserMenu } from './user-menu'
-import { Channel, UserData, useIsChannelMember } from '@/lib/store'
+import { Channel, useIsChannelMember } from '@/lib/store'
 import { MembersSidebar } from './members-sidebar'
 import { useChatStore } from '@/hooks/use-chat-store'
+
 import { JoinChannelPrompt } from './join-channel-prompt'
 import {
     ChannelMember,

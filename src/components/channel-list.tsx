@@ -24,21 +24,27 @@ import { useChannelManagement } from '@/hooks/use-channel-management'
 import { UserData, useStore } from '@/lib/store'
 import { useCallback, useMemo, useState } from 'react'
 import type { Database } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/client'
+import { useUnreadMessages } from '@/hooks/use-unread-messages'
 
 type Channel = Database['public']['Tables']['channels']['Row']
 
 function ChannelButton({
     channel,
     isActive,
+    isPending,
     onClick,
     onJoin,
     isMember,
+    unreadCount,
 }: {
     channel: Channel
     isActive: boolean
+    isPending: boolean
     onClick: () => void
     onJoin?: () => Promise<void>
     isMember: boolean
+    unreadCount: number
 }) {
     return (
         <div className="group relative">
@@ -46,26 +52,56 @@ function ChannelButton({
                 variant="ghost"
                 onClick={onClick}
                 className={cn(
-                    'flex items-center gap-2 justify-start w-full py-1 h-auto transition-colors',
-                    // Base styles for joined/unjoined
-                    isMember && 'font-semibold text-zinc-900',
-                    !isMember && 'text-zinc-400',
-                    // Background styles based on state
-                    isActive && 'bg-zinc-200 hover:bg-zinc-200',
-                    !isActive && isMember && 'bg-white/50 hover:bg-zinc-100',
+                    'flex items-center gap-2 justify-start w-full py-1.5 h-auto',
+                    'text-sm hover:bg-zinc-700/10 dark:hover:bg-zinc-700/50',
+                    'rounded-md mx-2',
+                    // Base styles - default state (Discord's muted look)
+                    isMember &&
+                        !isActive &&
+                        !isPending &&
+                        !unreadCount &&
+                        'text-zinc-500 font-normal',
+                    // Active or pending state (Discord's selected channel)
+                    (isActive || isPending) &&
+                        'bg-zinc-700/10 dark:bg-zinc-700/50 text-zinc-900 font-semibold',
+                    // Unread state (Discord's unread channel)
                     !isActive &&
-                        !isMember &&
-                        'bg-zinc-50/30 hover:bg-zinc-100/50',
+                        !isPending &&
+                        unreadCount > 0 &&
+                        'text-zinc-900 font-semibold',
+                    // Not joined state
+                    !isMember && 'text-zinc-400 font-normal opacity-50',
                 )}
             >
                 <Hash
                     className={cn(
                         'h-4 w-4 shrink-0',
-                        isMember && 'text-zinc-900',
-                        !isMember && 'text-zinc-400',
+                        // Hash icon follows the same state rules
+                        isMember &&
+                            !isActive &&
+                            !isPending &&
+                            !unreadCount &&
+                            'text-zinc-500',
+                        (isActive || isPending || unreadCount > 0) &&
+                            'text-zinc-900',
+                        !isMember && 'text-zinc-400 opacity-50',
                     )}
                 />
                 <span className="truncate">{channel.name}</span>
+                {unreadCount > 0 && (
+                    <div
+                        className={cn(
+                            'ml-auto flex items-center justify-center',
+                            'min-w-[18px] h-[18px] px-1',
+                            'text-xs font-semibold',
+                            'bg-zinc-500 text-white',
+                            'rounded-full',
+                            (isActive || isPending) && 'bg-zinc-600',
+                        )}
+                    >
+                        {unreadCount}
+                    </div>
+                )}
             </Button>
             {!isMember && onJoin && (
                 <div className="flex items-center justify-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
@@ -118,8 +154,40 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
     const router = useRouter()
     const [name, setName] = useState('')
     const isChannelMember = useStore(state => state.isChannelMember)
+    const unreadCounts = useStore(state => state.unreadCounts)
+    const clearUnreadCount = useStore(state => state.clearUnreadCount)
+    const setPendingActiveChannelId = useStore(
+        state => state.setPendingActiveChannelId,
+    )
+    const pendingActiveChannelId = useStore(
+        state => state.pendingActiveChannelId,
+    )
 
     const { createChannel, joinChannel } = useChannelManagement(userData.id)
+
+    // Initialize unread messages subscription
+    useUnreadMessages(userData.id)
+
+    const handleChannelClick = useCallback(
+        async (channelId: string) => {
+            // Set pending active channel immediately
+            setPendingActiveChannelId(channelId)
+
+            // Clear unread count in local state immediately
+            clearUnreadCount(channelId)
+
+            // Navigate to the channel
+            router.push(`/chat/${channelId}`)
+
+            // Then clear unread count in the database
+            const supabase = createClient()
+            await supabase.rpc('reset_unread_count', {
+                p_channel_id: channelId,
+                p_user_id: userData.id,
+            })
+        },
+        [clearUnreadCount, setPendingActiveChannelId, router, userData.id],
+    )
 
     if (!userData) {
         return (
@@ -165,11 +233,15 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
                                     key={channel.id}
                                     channel={channel}
                                     isActive={channelId === channel.id}
+                                    isPending={
+                                        pendingActiveChannelId === channel.id
+                                    }
                                     onClick={() =>
-                                        router.push(`/chat/${channel.id}`)
+                                        handleChannelClick(channel.id)
                                     }
                                     onJoin={() => joinChannel(channel.id)}
                                     isMember={isMember}
+                                    unreadCount={unreadCounts[channel.id] || 0}
                                 />
                             )
                         })}

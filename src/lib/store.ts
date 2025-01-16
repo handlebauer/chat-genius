@@ -105,11 +105,13 @@ interface ChannelsState {
     channels: Channel[]
     channelsLoading: boolean
     isHydrated: boolean
-    channelMemberships: Record<string, boolean> // Track which channels the user is a member of
+    channelMemberships: Record<string, boolean>
+    pendingActiveChannelId: string | null // Track channel that's being switched to
     setChannels: (channels: Channel[], isHydrating?: boolean) => void
     setChannelsLoading: (loading: boolean) => void
     activeChannelId: string | null
     setActiveChannelId: (id: string | null) => void
+    setPendingActiveChannelId: (id: string | null) => void // Set channel that's being switched to
     getDMParticipant: (
         channelId: string | null,
         currentUserId: string,
@@ -126,6 +128,12 @@ interface DMParticipantsState {
     setDMParticipant: (channelId: string, participant: UserData) => void
 }
 
+interface UnreadMessagesState {
+    unreadCounts: Record<string, number> // Keyed by channel_id
+    setUnreadCount: (channelId: string, count: number) => void
+    clearUnreadCount: (channelId: string) => void
+}
+
 // Combined store type
 interface Store
     extends MessagesState,
@@ -133,7 +141,8 @@ interface Store
         UserState,
         ChannelsState,
         MentionedUsersState,
-        DMParticipantsState {}
+        DMParticipantsState,
+        UnreadMessagesState {}
 
 // Create store
 export const useStore = create<Store>((set, get) => ({
@@ -315,6 +324,8 @@ export const useStore = create<Store>((set, get) => ({
     channelsLoading: true,
     isHydrated: false,
     channelMemberships: {},
+    activeChannelId: null,
+    pendingActiveChannelId: null,
     setChannels: (channels, isHydrating = false) =>
         set({
             channels,
@@ -322,8 +333,9 @@ export const useStore = create<Store>((set, get) => ({
             isHydrated: isHydrating ? true : get().isHydrated,
         }),
     setChannelsLoading: loading => set({ channelsLoading: loading }),
-    activeChannelId: null,
-    setActiveChannelId: id => set({ activeChannelId: id }),
+    setActiveChannelId: id =>
+        set({ activeChannelId: id, pendingActiveChannelId: null }),
+    setPendingActiveChannelId: id => set({ pendingActiveChannelId: id }),
     addChannel: channel =>
         set(state => ({
             channels: [...state.channels, channel],
@@ -380,6 +392,23 @@ export const useStore = create<Store>((set, get) => ({
             dmParticipants: {
                 ...state.dmParticipants,
                 [channelId]: participant,
+            },
+        })),
+
+    // Unread messages slice
+    unreadCounts: {},
+    setUnreadCount: (channelId, count) =>
+        set(state => ({
+            unreadCounts: {
+                ...state.unreadCounts,
+                [channelId]: count,
+            },
+        })),
+    clearUnreadCount: channelId =>
+        set(state => ({
+            unreadCounts: {
+                ...state.unreadCounts,
+                [channelId]: 0,
             },
         })),
 }))
