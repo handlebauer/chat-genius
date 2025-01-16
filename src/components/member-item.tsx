@@ -63,6 +63,8 @@ export const MemberItem = memo(function MemberItem({
                 } else {
                     // Create new DM channel, store participant info and navigate
                     const channel = await createDM(currentUserId, otherUserId)
+                    // Add the new channel to the store before navigation
+                    useStore.getState().addChannel(channel)
                     useStore.getState().setDMParticipant(channel.id, userData)
                     router.push(`/chat/${channel.id}`)
                 }
