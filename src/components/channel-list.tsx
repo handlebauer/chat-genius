@@ -147,14 +147,15 @@ function ChannelButton({
                     </div>
                 )}
             </Button>
-            {!isMember && onJoin && (
+            {!isMember && (
                 <div className="flex items-center justify-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={e => {
                             e.stopPropagation()
-                            onJoin()
+                            if (onJoin) onJoin()
+                            else onClick() // For private channels, trigger the password dialog
                         }}
                         className="px-2 h-6 hover:bg-zinc-50/50 rounded-sm text-xs text-zinc-500 hover:text-zinc-900"
                     >
@@ -343,6 +344,7 @@ function PasswordDialog({
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="Enter channel password"
+                            autoFocus
                         />
                         {error && (
                             <p className="text-sm text-red-500">{error}</p>
@@ -445,11 +447,18 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
     // Sort channels by created_at
     const sortedChannels = useMemo(() => {
         return [...channels].sort((a, b) => {
+            // First sort by joined status
+            const aJoined = isChannelMember(a.id)
+            const bJoined = isChannelMember(b.id)
+            if (aJoined !== bJoined) {
+                return aJoined ? -1 : 1
+            }
+            // Then sort by creation date
             const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
             const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
             return bTime - aTime
         })
-    }, [channels])
+    }, [channels, isChannelMember])
 
     return (
         <Dialog>
