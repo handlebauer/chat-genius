@@ -46,33 +46,20 @@ export async function updateSession(request: NextRequest) {
 
     // If we have a user, check if they need to join default channels
     if (user) {
-        const isInitialized = request.cookies.get('user_initialized')
+        const { data: memberships } = await supabase
+            .from('channel_members')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1)
 
-        if (!isInitialized) {
-            console.log('[UpdateSession] Checking user memberships:', user.id)
-            const { data: memberships } = await supabase
-                .from('channel_members')
-                .select('id')
-                .eq('user_id', user.id)
-                .limit(1)
+        console.log('[UpdateSession] Found memberships:', memberships)
 
-            console.log('[UpdateSession] Found memberships:', memberships)
-
-            // If no memberships found, this is a new user
-            if (!memberships?.length) {
-                console.log(
-                    '[UpdateSession] New user detected, joining default channels',
-                )
-                await joinDefaultChannels(user.id)
-            }
-
-            // Set initialization cookie
-            supabaseResponse.cookies.set('user_initialized', 'true', {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 60 * 60 * 24 * 30, // 30 days
-            })
+        // If no memberships found, this is a new user
+        if (!memberships?.length) {
+            console.log(
+                '[UpdateSession] New user detected, joining default channels',
+            )
+            await joinDefaultChannels(user.id)
         }
 
         // Redirect to chat if on auth-related pages
