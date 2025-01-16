@@ -151,9 +151,25 @@ export function DirectMessagesList({
                 return 1
             }
 
-            // Then sort by online status
-            if (a.status === 'online' && b.status !== 'online') return -1
-            if (a.status !== 'online' && b.status === 'online') return 1
+            // Then sort by online status priority: online > away > offline
+            const getStatusPriority = (status: string) => {
+                switch (status) {
+                    case 'online':
+                        return 0
+                    case 'away':
+                        return 1
+                    case 'offline':
+                        return 2
+                    default:
+                        return 3
+                }
+            }
+
+            const aPriority = getStatusPriority(a.status)
+            const bPriority = getStatusPriority(b.status)
+            if (aPriority !== bPriority) {
+                return aPriority - bPriority
+            }
 
             // Finally sort by name
             const aName = a.name || a.email || ''
