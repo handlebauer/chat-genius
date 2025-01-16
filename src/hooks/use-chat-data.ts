@@ -86,9 +86,6 @@ export async function useChatData(user: User, channelId: string) {
 
     if (!channels || !userData || !channelMembers) return null
 
-    // Debug log all channel members
-    console.log('All channel members:', channelMembers)
-
     // Fetch most recent message for each DM channel
     const { data: lastMessages } = await supabase
         .from('messages')
@@ -116,8 +113,6 @@ export async function useChatData(user: User, channelId: string) {
         {} as Record<string, string>,
     )
 
-    console.log({ channelMembers })
-
     // Group members by channel for easier access
     const membersByChannel = channelMembers.reduce(
         (acc, member) => {
@@ -137,8 +132,6 @@ export async function useChatData(user: User, channelId: string) {
         },
         {} as Record<string, ChannelMember[]>,
     )
-
-    console.log({ membersByChannel })
 
     // Create a map of DM users with their last message timestamp
     const dmUsersMap = Object.entries(membersByChannel)
@@ -186,8 +179,6 @@ export async function useChatData(user: User, channelId: string) {
     const directMessages = channels.filter(
         c => c.channel_type === 'direct_message',
     )
-
-    console.log({ dmUsersMap })
 
     return {
         channels: regularChannels,
