@@ -340,14 +340,11 @@ export const useStore = create<Store>((set, get) => ({
         const channel = get().channels.find(c => c.id === channelId)
         return channel?.created_by === userId
     },
-    setChannelMemberships: memberships =>
-        set(state => ({
-            channelMemberships: memberships,
-        })),
+    setChannelMemberships: channelMemberships => set({ channelMemberships }),
     isChannelMember: channelId => {
         return get().channelMemberships[channelId] || false
     },
-    getDMParticipant: (channelId, currentUserId) => {
+    getDMParticipant: channelId => {
         const { channels, dmParticipants } = get()
 
         if (!channelId) return null

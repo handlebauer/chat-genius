@@ -97,6 +97,7 @@ export function useChatStore(
                     {} as ChannelMemberships,
                 )
                 setChannelMemberships(membershipMap)
+                handleChannelUpdate()
             }
         }
 
