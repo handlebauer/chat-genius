@@ -14,7 +14,7 @@ import { ChannelMember } from '@/hooks/use-chat-data'
 interface ChatTitleProps {
     currentChannel: Channel
     userData: UserData
-    currentChannelMembers?: ChannelMember[]
+    currentChannelMembers: ChannelMember[]
 }
 
 function ChannelTitle({

@@ -3,7 +3,11 @@ import { Channel, useStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 import { useShallow } from 'zustand/react/shallow'
 
-export function useDMs(channelId: string, initialDirectMessages?: Channel[]) {
+export function useDMs(
+    channelId: string,
+    userId: string,
+    initialDirectMessages?: Channel[],
+) {
     const supabase = createClient()
 
     const setChannels = useStore(state => state.setChannels)
@@ -46,9 +50,24 @@ export function useDMs(channelId: string, initialDirectMessages?: Channel[]) {
         async function loadDirectMessages() {
             if (channels?.some(c => c.channel_type === 'direct_message')) return
 
+            // First get all DM channels where the user is a member
+            const { data: memberChannels } = await supabase
+                .from('channel_members')
+                .select('channel_id')
+                .eq('user_id', userId)
+
+            if (!memberChannels?.length) return
+
+            // Then fetch the actual channels
             const { data: fetchedChannels, error } = await supabase
                 .from('channels')
                 .select('*')
+                .in(
+                    'id',
+                    memberChannels
+                        .map(m => m.channel_id)
+                        .filter((id): id is string => id !== null),
+                )
                 .eq('channel_type', 'direct_message')
                 .order('created_at')
 
@@ -65,6 +84,7 @@ export function useDMs(channelId: string, initialDirectMessages?: Channel[]) {
                     ),
                     ...fetchedChannels,
                 ])
+
                 const noSelectedChannel =
                     !activeChannelId && fetchedChannels.length > 0
                 if (noSelectedChannel) {
@@ -84,8 +104,8 @@ export function useDMs(channelId: string, initialDirectMessages?: Channel[]) {
                 {
                     event: '*',
                     schema: 'public',
-                    table: 'channels',
-                    filter: 'channel_type=eq.direct_message',
+                    table: 'channel_members',
+                    filter: `user_id=eq.${userId}`,
                 },
                 () => loadDirectMessages(),
             )
@@ -94,7 +114,14 @@ export function useDMs(channelId: string, initialDirectMessages?: Channel[]) {
         return () => {
             channel.unsubscribe()
         }
-    }, [supabase, setChannels, activeChannelId, setActiveChannelId, channels])
+    }, [
+        supabase,
+        setChannels,
+        activeChannelId,
+        setActiveChannelId,
+        channels,
+        userId,
+    ])
 
     // Return only DM channels from the store
     return {

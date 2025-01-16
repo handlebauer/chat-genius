@@ -51,24 +51,28 @@ export function DirectMessagesList({
     dmUsers,
 }: DirectMessagesListProps) {
     const userId = userData.id
-    const { directMessages } = useDMs(currentChannel.id, initialDirectMessages)
+    const { directMessages } = useDMs(
+        currentChannel.id,
+        userId,
+        initialDirectMessages,
+    )
     const { onlineUsers } = useOnlineUsers({ userId })
     const { isIdle } = useIdleDetection()
     const router = useRouter()
 
-    // Extract unique user IDs from DM channel names
+    // Extract unique user IDs from DM channels
     const dmUserIds = useMemo(() => {
         const userIds = new Set<string>()
         directMessages.forEach(channel => {
             if (channel.channel_type === 'direct_message') {
-                const [, participants] = channel.name.split(':')
-                const [user1, user2] = participants.split('_')
-                if (user1 !== userId) userIds.add(user1)
-                if (user2 !== userId) userIds.add(user2)
+                const otherUser = dmUsers[channel.id]
+                if (otherUser && otherUser.id !== userId) {
+                    userIds.add(otherUser.id)
+                }
             }
         })
         return Array.from(userIds)
-    }, [directMessages, userId])
+    }, [directMessages, userId, dmUsers])
 
     // Get DM users with their online status
     const dmUsersWithStatus = useMemo(() => {
@@ -77,7 +81,13 @@ export function DirectMessagesList({
                 const onlineUser = onlineUsers.find(
                     user => user.id === dmUserId,
                 )
-                const dmUser = dmUsers[dmUserId]
+                // Find the DM channel that contains this user
+                const dmChannel = directMessages.find(
+                    channel =>
+                        channel.channel_type === 'direct_message' &&
+                        dmUsers[channel.id]?.id === dmUserId,
+                )
+                const dmUser = dmChannel ? dmUsers[dmChannel.id] : null
 
                 if (!dmUser) return null
 
@@ -87,23 +97,20 @@ export function DirectMessagesList({
                 } as DMUserWithStatus
             })
             .filter((user): user is DMUserWithStatus => user !== null)
-    }, [dmUserIds, onlineUsers, dmUsers])
+    }, [dmUserIds, onlineUsers, dmUsers, directMessages])
 
     const handleUserClick = useCallback(
         async (otherUserId: string) => {
-            // Find existing DM channel
-            const dmName = `dm:${userId}_${otherUserId}`
-            const altDmName = `dm:${otherUserId}_${userId}`
+            // Find existing DM channel by checking if both users are members
             const existingChannel = directMessages.find(
-                channel =>
-                    channel.name === dmName || channel.name === altDmName,
+                channel => dmUsers[channel.id]?.id === otherUserId,
             )
 
             if (existingChannel) {
                 router.push(`/chat/${existingChannel.id}`)
             }
         },
-        [userId, router, directMessages],
+        [userId, router, directMessages, dmUsers],
     )
 
     const isUserActive = (selectedUserId: string) => {
@@ -114,9 +121,8 @@ export function DirectMessagesList({
         ) {
             return false
         }
-        const [, participants] = currentChannel.name.split(':')
-        const [user1, user2] = participants.split('_')
-        return selectedUserId === user1 || selectedUserId === user2
+        // Check if the selected user is a member of the current channel
+        return dmUsers[currentChannel.id]?.id === selectedUserId
     }
 
     const currentUserButtonClassName = useMemo(

@@ -106,6 +106,7 @@ export function ClientSideWrapper({
                         <ChatTitle
                             currentChannel={currentChannel}
                             userData={userData}
+                            currentChannelMembers={currentChannelMembers}
                         />
                         <div className="flex items-center gap-4">
                             <MessageSearch />

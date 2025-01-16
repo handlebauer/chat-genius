@@ -43,13 +43,7 @@ export async function useChatData(user: User, channelId: string) {
         channelMembersResponse,
         userMembershipsResponse,
     ] = await Promise.all([
-        supabase
-            .from('channels')
-            .select('*')
-            .or(
-                `channel_type.eq.channel,and(channel_type.eq.direct_message,or(name.ilike.dm:${user.id}_%,name.ilike.dm:%_${user.id}))`,
-            )
-            .order('created_at'),
+        supabase.from('channels').select('*').order('created_at'),
         supabase.from('users').select('*').eq('id', user.id).single(),
         supabase
             .from('channel_members')
@@ -57,7 +51,8 @@ export async function useChatData(user: User, channelId: string) {
                 `
                 channel_id,
                 role,
-                users:user_id (
+                user_id,
+                users!inner (
                     id,
                     name,
                     email,
@@ -84,36 +79,15 @@ export async function useChatData(user: User, channelId: string) {
         userMembershipsResponse,
     ]
 
+    // Log any errors for debugging
+    if (membersError) {
+        console.error('Error fetching channel members:', membersError)
+    }
+
     if (!channels || !userData || !channelMembers) return null
 
-    // Get all DM participant IDs and their channels
-    const dmParticipantIds = new Set<string>()
-    const dmChannelsByParticipant: Record<string, string[]> = {}
-
-    channels
-        .filter(c => c.channel_type === 'direct_message')
-        .forEach(channel => {
-            const [, participants] = channel.name.split(':')
-            const [user1, user2] = participants.split('_')
-            if (user1 !== user.id) {
-                dmParticipantIds.add(user1)
-                dmChannelsByParticipant[user1] =
-                    dmChannelsByParticipant[user1] || []
-                dmChannelsByParticipant[user1].push(channel.id)
-            }
-            if (user2 !== user.id) {
-                dmParticipantIds.add(user2)
-                dmChannelsByParticipant[user2] =
-                    dmChannelsByParticipant[user2] || []
-                dmChannelsByParticipant[user2].push(channel.id)
-            }
-        })
-
-    // Fetch complete user data for all DM participants
-    const { data: dmUsers } = await supabase
-        .from('users')
-        .select('id, name, email, avatar_url, status')
-        .in('id', Array.from(dmParticipantIds))
+    // Debug log all channel members
+    console.log('All channel members:', channelMembers)
 
     // Fetch most recent message for each DM channel
     const { data: lastMessages } = await supabase
@@ -142,44 +116,10 @@ export async function useChatData(user: User, channelId: string) {
         {} as Record<string, string>,
     )
 
-    // Create a map of DM users with their last message timestamp
-    const dmUsersMap = (dmUsers || []).reduce(
-        (acc, user) => {
-            if (!user.id) return acc
-
-            const userChannels = dmChannelsByParticipant[user.id] || []
-            const lastMessageAt = userChannels.reduce(
-                (latest, channelId) => {
-                    const timestamp = lastMessageByChannel[channelId]
-                    return timestamp && (!latest || timestamp > latest)
-                        ? timestamp
-                        : latest
-                },
-                null as string | null,
-            )
-
-            acc[user.id] = {
-                ...user,
-                lastMessageAt,
-            }
-            return acc
-        },
-        {} as Record<string, DMUser>,
-    )
-
-    // Convert user memberships to a Record for easier lookup
-    const channelMemberships = (userMemberships || []).reduce(
-        (acc, membership) => {
-            if (membership.channel_id) {
-                acc[membership.channel_id] = true
-            }
-            return acc
-        },
-        {} as ChannelMemberships,
-    )
+    console.log({ channelMembers })
 
     // Group members by channel for easier access
-    const membersByChannel = (channelMembers as ChannelMemberResponse[]).reduce(
+    const membersByChannel = channelMembers.reduce(
         (acc, member) => {
             const channelId = member.channel_id
             if (channelId) {
@@ -198,8 +138,45 @@ export async function useChatData(user: User, channelId: string) {
         {} as Record<string, ChannelMember[]>,
     )
 
-    const currentChannel = channels.find(channel => channel.id === channelId)
+    console.log({ membersByChannel })
 
+    // Create a map of DM users with their last message timestamp
+    const dmUsersMap = Object.entries(membersByChannel)
+        .filter(([channelId]) => {
+            const channel = channels.find(c => c.id === channelId)
+            return channel?.channel_type === 'direct_message'
+        })
+        .reduce(
+            (acc, [channelId, members]) => {
+                // For DMs, find the other user (not the current user)
+                const otherMember = members.find(m => m.id !== user.id)
+                if (otherMember) {
+                    acc[channelId] = {
+                        id: otherMember.id,
+                        name: otherMember.name,
+                        email: otherMember.email,
+                        avatar_url: otherMember.avatar_url,
+                        status: null, // We'll need to get this from presence data
+                        lastMessageAt: lastMessageByChannel[channelId] || null,
+                    }
+                }
+                return acc
+            },
+            {} as Record<string, DMUser>,
+        )
+
+    // Convert user memberships to a Record for easier lookup
+    const channelMemberships = (userMemberships || []).reduce(
+        (acc, membership) => {
+            if (membership.channel_id) {
+                acc[membership.channel_id] = true
+            }
+            return acc
+        },
+        {} as ChannelMemberships,
+    )
+
+    const currentChannel = channels.find(channel => channel.id === channelId)
     if (!currentChannel) return null
 
     const currentChannelMembers = membersByChannel[currentChannel.id] || []
@@ -209,6 +186,8 @@ export async function useChatData(user: User, channelId: string) {
     const directMessages = channels.filter(
         c => c.channel_type === 'direct_message',
     )
+
+    console.log({ dmUsersMap })
 
     return {
         channels: regularChannels,

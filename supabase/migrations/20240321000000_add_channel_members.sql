@@ -28,13 +28,16 @@ CREATE TRIGGER update_channel_members_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Automatically add channel creator as owner when channel is created
+-- Automatically add channel creator as owner when channel is created (only for regular channels)
 CREATE OR REPLACE FUNCTION add_channel_creator_as_owner()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Use SECURITY DEFINER to bypass RLS
-    INSERT INTO channel_members (channel_id, user_id, role)
-    VALUES (NEW.id, NEW.created_by, 'owner');
+    -- Only add creator as owner for regular channels, not DMs
+    IF NEW.channel_type = 'channel' THEN
+        -- Use SECURITY DEFINER to bypass RLS
+        INSERT INTO channel_members (channel_id, user_id, role)
+        VALUES (NEW.id, NEW.created_by, 'owner');
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -47,15 +50,34 @@ CREATE TRIGGER add_channel_creator_membership
 -- Add RLS policies for channel_members
 ALTER TABLE channel_members ENABLE ROW LEVEL SECURITY;
 
+-- Create a function to check if a user is a member of a channel
+CREATE OR REPLACE FUNCTION is_channel_member(channel_id TEXT, user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM channel_members cm
+        WHERE cm.channel_id = $1
+        AND cm.user_id = $2
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Create a function to check if a user is an admin or owner of a channel
 CREATE OR REPLACE FUNCTION is_channel_admin(channel_id TEXT, user_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
-        SELECT 1 FROM channel_members
-        WHERE channel_members.channel_id = $1
-        AND channel_members.user_id = $2
-        AND channel_members.role IN ('admin', 'owner')
+        SELECT 1 FROM channel_members cm
+        JOIN channels c ON c.id = cm.channel_id
+        WHERE cm.channel_id = $1
+        AND cm.user_id = $2
+        AND (
+            -- For regular channels, check admin/owner role
+            (c.channel_type = 'channel' AND cm.role IN ('admin', 'owner'))
+            OR
+            -- For DMs, any member can manage the channel
+            (c.channel_type = 'direct_message' AND cm.role = 'member')
+        )
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -73,7 +95,7 @@ CREATE POLICY "Allow viewing members if in channel"
         )
         OR
         -- Or if you're a member of the channel
-        channel_members.user_id = auth.uid()
+        is_channel_member(channel_members.channel_id, auth.uid())
     );
 
 -- Allow admins to insert new members
@@ -81,21 +103,34 @@ CREATE POLICY "Allow admins to add members"
     ON channel_members
     FOR INSERT
     WITH CHECK (
-        -- User can only insert themselves
-        auth.uid() = user_id
-        AND (
-            -- Into public channels as regular member
-            (
-                EXISTS (
-                    SELECT 1 FROM channels c
-                    WHERE c.id = channel_id
-                    AND NOT c.is_private
+        (
+            -- User can only insert themselves
+            auth.uid() = user_id
+            AND (
+                -- Into public channels as regular member
+                (
+                    EXISTS (
+                        SELECT 1 FROM channels c
+                        WHERE c.id = channel_id
+                        AND NOT c.is_private
+                    )
+                    AND role = 'member'
                 )
+                OR
+                -- Or if they're an admin of the channel
+                is_channel_admin(channel_id, auth.uid())
+            )
+        )
+        OR
+        -- Special case for DM creation: allow creator to add both members
+        (
+            EXISTS (
+                SELECT 1 FROM channels c
+                WHERE c.id = channel_id
+                AND c.channel_type = 'direct_message'
+                AND c.created_by = auth.uid()
                 AND role = 'member'
             )
-            OR
-            -- Or if they're an admin of the channel
-            is_channel_admin(channel_id, auth.uid())
         )
     );
 
