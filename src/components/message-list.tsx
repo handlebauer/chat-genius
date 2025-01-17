@@ -10,6 +10,7 @@ import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { EmptyMessages } from './empty-messages'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface ThreadReply {
     id: string
@@ -38,9 +39,30 @@ interface Message {
 interface MessageListProps {
     messages: Message[]
     userData: UserData
+    isLoading?: boolean
 }
 
-export function MessageList({ messages, userData }: MessageListProps) {
+function MessageSkeleton() {
+    return (
+        <div className="flex gap-2 items-start p-1 pb-[2px] relative">
+            <Skeleton className="w-7 h-7 rounded-full" />
+            <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-12" />
+                </div>
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+            </div>
+        </div>
+    )
+}
+
+export function MessageList({
+    messages,
+    userData,
+    isLoading = false,
+}: MessageListProps) {
     const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
     const selectedMessageId = useStore(state => state.selectedMessageId)
     const selectMessage = useStore(state => state.selectMessage)
@@ -54,12 +76,40 @@ export function MessageList({ messages, userData }: MessageListProps) {
         new Set(),
     )
     const [newThreadIds, setNewThreadIds] = useState<Set<string>>(new Set())
+    const [initialLoading, setInitialLoading] = useState(true)
+    const initialRenderRef = useRef(true)
 
     const { scrollAreaRef, scrollToBottom } = useScrollToBottom({
         messages,
         shouldScrollToBottom,
         setShouldScrollToBottom,
     })
+
+    // Handle initial loading state
+    useEffect(() => {
+        if (initialRenderRef.current) {
+            const timer = setTimeout(() => {
+                setInitialLoading(false)
+                initialRenderRef.current = false
+                // Ensure scroll position is correct after loading
+                if (shouldScrollToBottom) {
+                    requestAnimationFrame(() => {
+                        scrollToBottom()
+                    })
+                }
+            }, 500)
+            return () => clearTimeout(timer)
+        }
+    }, [shouldScrollToBottom, scrollToBottom])
+
+    // Ensure scroll position is correct after loading
+    useEffect(() => {
+        if (!isLoading && shouldScrollToBottom) {
+            requestAnimationFrame(() => {
+                scrollToBottom()
+            })
+        }
+    }, [isLoading, shouldScrollToBottom, scrollToBottom])
 
     // Add scroll listener to detect when user is near bottom
     useEffect(() => {
@@ -209,7 +259,15 @@ export function MessageList({ messages, userData }: MessageListProps) {
 
     return (
         <ScrollArea ref={scrollAreaRef} className="flex-1 mr-1">
-            {messages.length === 0 ? (
+            {isLoading || initialLoading ? (
+                <div className="flex flex-col p-4 pb-3">
+                    <div className="space-y-4">
+                        {Array.from({ length: 7 }).map((_, i) => (
+                            <MessageSkeleton key={i} />
+                        ))}
+                    </div>
+                </div>
+            ) : messages.length === 0 ? (
                 <EmptyMessages />
             ) : (
                 <div className="flex flex-col p-4 pb-3">
