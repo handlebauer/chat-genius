@@ -13,7 +13,7 @@ export async function createAvatar(
     // Get the original user's details
     const { data: originalUser, error: userError } = await supabase
         .from('users')
-        .select('name, email')
+        .select('name, email, avatar_url')
         .eq('id', originalUserId)
         .single()
 
@@ -60,7 +60,9 @@ export async function createAvatar(
         .insert({
             name: avatarName,
             email: avatarEmail,
-            avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=avatar',
+            avatar_url:
+                originalUser.avatar_url ||
+                'https://api.dicebear.com/7.x/bottts/svg?seed=avatar',
         })
         .select()
         .single()
