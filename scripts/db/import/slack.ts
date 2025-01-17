@@ -100,7 +100,7 @@ async function dumpChannelMessages(
     const finalJsonPath = `./exports/channels/${channelName}.json`
 
     console.log(`Starting Slack dump for channel ${channelName}...`)
-    await $`slackdump dump -o ${outputSlackdumpPath} ${channelId}`
+    await $`slackdump dump -files=false -o ${outputSlackdumpPath} ${channelId}`
 
     const slackdumpJson = await Bun.file(outputSlackdumpJsonPath).json()
     await $`rm -rf ${outputSlackdumpPath}`
