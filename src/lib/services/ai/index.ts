@@ -4,6 +4,7 @@ import type { Database } from '@/lib/supabase/types'
 import { AICommandHandler, AIResponse } from './types'
 import { askChannelCommand } from './commands/ask-channel'
 import { askAllChannelsCommand } from './commands/ask-all-channels'
+import { avatarInitial } from './commands/avatar-initial'
 
 export class AIService {
     private openai: OpenAI
@@ -29,6 +30,7 @@ export class AIService {
         this.commands = new Map([
             ['ask-channel', askChannelCommand],
             ['ask-all-channels', askAllChannelsCommand],
+            ['avatar-initial', avatarInitial],
         ])
     }
 

@@ -40,6 +40,15 @@ interface MessageListProps {
     messages: Message[]
     userData: UserData
     isLoading?: boolean
+    currentChannel: {
+        id: string
+        channel_type: string
+        name: string
+    }
+    dmParticipant?: {
+        id: string
+        email: string
+    }
 }
 
 function MessageSkeleton() {
@@ -62,6 +71,8 @@ export function MessageList({
     messages,
     userData,
     isLoading = false,
+    currentChannel,
+    dmParticipant,
 }: MessageListProps) {
     const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
     const selectedMessageId = useStore(state => state.selectedMessageId)

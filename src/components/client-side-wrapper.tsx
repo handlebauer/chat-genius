@@ -129,6 +129,10 @@ export function ClientSideWrapper({
                                 <MessagesSection
                                     currentChannelId={channelId}
                                     userData={userData}
+                                    currentChannel={currentChannel}
+                                    dmParticipant={
+                                        dmParticipants[currentChannel.id]
+                                    }
                                 />
                                 <div className="pb-1">
                                     <MessageEditor

@@ -1,6 +1,14 @@
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Bot } from 'lucide-react'
 
-export function EmptyMessages() {
+interface EmptyMessagesProps {
+    isAvatarDM?: boolean
+}
+
+export function EmptyMessages({ isAvatarDM }: EmptyMessagesProps) {
+    if (isAvatarDM) {
+        return null
+    }
+
     return (
         <div className="p-4">
             <div className="flex items-start gap-3 text-zinc-500 px-1">

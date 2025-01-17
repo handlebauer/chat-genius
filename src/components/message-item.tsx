@@ -32,7 +32,8 @@ import {
     ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { createDM } from '@/lib/actions/create-dm'
-import type { Channel, UserData } from '@/lib/store'
+import type { UserData } from '@/lib/store'
+import { createAvatar } from '@/lib/actions/create-avatar'
 
 type User = Database['public']['Tables']['users']['Row']
 
@@ -331,9 +332,43 @@ export function MessageItem({
         setChannels,
     ])
 
-    const handleAvatarChat = () => {
-        // TODO: Implement avatar chat
-        console.log('Start avatar chat with:', message.sender.id)
+    const handleAvatarChat = async () => {
+        try {
+            // Create avatar user
+            const avatar = await createAvatar(message.sender.id)
+
+            // Create DM channel with avatar
+            const channel = await createDM(currentUser.id, avatar.id)
+            if (!channel) {
+                throw new Error('Failed to create DM channel')
+            }
+
+            // Update channels in store
+            setChannels([
+                ...channels.filter(c => c.channel_type === 'channel'),
+                ...channels.filter(
+                    c =>
+                        c.channel_type === 'direct_message' &&
+                        c.id !== channel.id,
+                ),
+                channel,
+            ])
+
+            // Store participant info and navigate
+            const avatarUserData: UserData = {
+                id: avatar.id,
+                name: avatar.name,
+                email: avatar.email,
+                avatar_url: avatar.avatar_url,
+                created_at: avatar.created_at,
+                updated_at: avatar.updated_at,
+                status: null,
+            }
+            useStore.getState().setDMParticipant(channel.id, avatarUserData)
+            router.push(`/chat/${channel.id}`)
+        } catch (error) {
+            console.error('Failed to create or navigate to avatar chat:', error)
+        }
     }
 
     return (
