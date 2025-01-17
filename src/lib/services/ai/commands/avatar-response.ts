@@ -23,6 +23,7 @@ Your response must:
 3. Match their typical response style and depth
 4. Stay true to their knowledge areas and opinions
 5. NEVER end with a question (only 5% of the time)
+6. NEVER start with "<User's> Avatar:"
 
 Style Context:
 \`\`\`

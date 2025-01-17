@@ -66,11 +66,14 @@ async function seedUsers() {
         const usersFile = await Bun.file('./exports/users.json').json()
 
         for (const slackUser of usersFile) {
+            const slackUserName =
+                slackUser.realName || slackUser.name.split('.').join(' ')
+
             const { data: user, error } = await supabase
                 .from('users')
                 .insert({
                     email: slackUser.email,
-                    name: slackUser.realName,
+                    name: slackUserName,
                     avatar_url: slackUser.avatar,
                 })
                 .select()
