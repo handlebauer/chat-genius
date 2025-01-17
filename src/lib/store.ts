@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Database } from '@/lib/supabase/types'
-import { ChannelMemberships } from '@/hooks/use-chat-data'
+import { ChannelMemberships, ChannelMember } from '@/hooks/use-chat-data'
 import { useShallow } from 'zustand/react/shallow'
 
 // Types
@@ -134,6 +134,13 @@ interface UnreadMessagesState {
     clearUnreadCount: (channelId: string) => void
 }
 
+interface ChannelMembersState {
+    channelMembers: Record<string, ChannelMember[]> // Keyed by channel_id
+    setChannelMembers: (channelId: string, members: ChannelMember[]) => void
+    addChannelMember: (channelId: string, member: ChannelMember) => void
+    removeChannelMember: (channelId: string, memberId: string) => void
+}
+
 // Combined store type
 interface Store
     extends MessagesState,
@@ -142,7 +149,8 @@ interface Store
         ChannelsState,
         MentionedUsersState,
         DMParticipantsState,
-        UnreadMessagesState {}
+        UnreadMessagesState,
+        ChannelMembersState {}
 
 // Create store
 export const useStore = create<Store>((set, get) => ({
@@ -409,6 +417,35 @@ export const useStore = create<Store>((set, get) => ({
             unreadCounts: {
                 ...state.unreadCounts,
                 [channelId]: 0,
+            },
+        })),
+
+    // Channel members slice
+    channelMembers: {},
+    setChannelMembers: (channelId, members) =>
+        set(state => ({
+            channelMembers: {
+                ...state.channelMembers,
+                [channelId]: members,
+            },
+        })),
+    addChannelMember: (channelId, member) =>
+        set(state => ({
+            channelMembers: {
+                ...state.channelMembers,
+                [channelId]: [
+                    ...(state.channelMembers[channelId] || []),
+                    member,
+                ],
+            },
+        })),
+    removeChannelMember: (channelId, memberId) =>
+        set(state => ({
+            channelMembers: {
+                ...state.channelMembers,
+                [channelId]: (state.channelMembers[channelId] || []).filter(
+                    m => m.id !== memberId,
+                ),
             },
         })),
 }))
