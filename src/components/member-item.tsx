@@ -104,9 +104,18 @@ export const MemberItem = memo(function MemberItem({
                 </Avatar>
                 <div
                     className={cn(
-                        'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white',
-                        statusColor,
+                        'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white bg-emerald-500',
                     )}
+                    style={{
+                        backgroundColor:
+                            statusColor === 'bg-emerald-500'
+                                ? '#10b981'
+                                : statusColor === 'bg-yellow-500'
+                                  ? '#eab308'
+                                  : statusColor === 'bg-zinc-400'
+                                    ? '#a1a1aa'
+                                    : undefined,
+                    }}
                 />
             </div>
             <div className="flex flex-col">
