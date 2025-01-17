@@ -58,7 +58,6 @@ export function DirectMessagesList({
 
     // Extract unique user IDs from DM channels - memoized with stable references
     const dmUserIds = useMemo(() => {
-        console.log('[DirectMessagesList] Recalculating dmUserIds')
         const userIds = new Set<string>()
         directMessages.forEach(channel => {
             if (channel.channel_type === 'direct_message') {
@@ -73,7 +72,6 @@ export function DirectMessagesList({
 
     // Get DM users with their online status - with debug
     const dmUsersWithStatus = useMemo(() => {
-        console.log('[DirectMessagesList] Recalculating dmUsersWithStatus')
         return dmUserIds
             .map(dmUserId => {
                 const onlineUser = onlineUsers.find(
