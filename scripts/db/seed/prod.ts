@@ -214,11 +214,44 @@ async function formatMessageContent(
     return formattedContent
 }
 
+interface StoredEmbedding {
+    message_id: string
+    content: string
+    embedding_vector: number[]
+}
+
+async function loadStoredEmbeddings(): Promise<Map<string, number[]>> {
+    try {
+        const embeddingsPath = './exports/embeddings.json'
+        const file = Bun.file(embeddingsPath)
+
+        if (await file.exists()) {
+            const embeddings: StoredEmbedding[] = await file.json()
+            const embeddingMap = new Map<string, number[]>()
+
+            // Create a map of content to embedding vector
+            for (const embedding of embeddings) {
+                embeddingMap.set(embedding.content, embedding.embedding_vector)
+            }
+
+            console.log(`Loaded ${embeddingMap.size} stored embeddings`)
+            return embeddingMap
+        }
+    } catch (error) {
+        console.error('Failed to load stored embeddings:', error)
+    }
+
+    return new Map()
+}
+
 async function seedChannels() {
     try {
         const channelsDir = './exports/channels'
         const files = await readdir(channelsDir)
         const jsonFiles = files.filter(file => file.endsWith('.json'))
+
+        // Load stored embeddings once before processing messages
+        const storedEmbeddings = await loadStoredEmbeddings()
 
         // Hash the password once for all channels
         const { data: passwordHash, error: hashError } = await supabase.rpc(
@@ -294,6 +327,9 @@ async function seedChannels() {
                     continue
                 }
 
+                // Check if we have a stored embedding for this content
+                const existingEmbedding = storedEmbeddings.get(formattedContent)
+
                 const { error: messageError } = await supabase
                     .from('messages')
                     .insert({
@@ -303,6 +339,12 @@ async function seedChannels() {
                         created_at: new Date(
                             Number(message.ts) * 1000,
                         ).toISOString(),
+                        ...(existingEmbedding
+                            ? {
+                                  embedding_vector:
+                                      JSON.stringify(existingEmbedding),
+                              }
+                            : {}),
                     })
 
                 if (messageError) {
