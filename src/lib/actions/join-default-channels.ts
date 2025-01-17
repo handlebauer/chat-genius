@@ -5,7 +5,10 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { botUserConfig, config } from '@/config'
 import type { Database } from '@/lib/supabase/types'
 
-const DEFAULT_CHANNELS = ['general', 'ai-test'] as const
+const DEFAULT_CHANNELS =
+    config.NODE_ENV === 'production'
+        ? ['hello']
+        : (['general', 'ai-test', 'hello'] as const)
 
 async function createBotDmChannel(userId: string, botUserId: string) {
     console.log('[CreateBotDmChannel] Starting with:', { userId, botUserId })

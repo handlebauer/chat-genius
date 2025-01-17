@@ -117,15 +117,6 @@ async function dumpChannelMessages(
                           console.log('Removing special tag/emoji:', match)
                           return ''
                       })
-                      .replace(/<@(U[A-Z0-9]+)>/g, (_: any, userId: string) => {
-                          console.log(
-                              'Replacing user ID:',
-                              userId,
-                              'with name:',
-                              usersById[userId]?.name || '',
-                          )
-                          return `@${usersById[userId]?.name}` || ''
-                      })
                       .replace(
                           /<#(C[A-Z0-9]+)\|?([^>]*)>/g,
                           (_: any, channelId: string, channelName: string) => {
