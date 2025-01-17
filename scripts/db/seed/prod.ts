@@ -160,7 +160,7 @@ async function seedTestChannel() {
         const { error: messageError } = await supabase.from('messages').insert({
             channel_id: channel.id,
             content:
-                'Welcome to the hello channel! 👋 I am the GauntletAI Bot, here to help you test things out.',
+                'Welcome to ChatGenius! 👋 I am Bot, here to help you test things out.',
             sender_id: systemUserId,
         })
 

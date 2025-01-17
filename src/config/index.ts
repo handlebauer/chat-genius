@@ -5,7 +5,7 @@ const envSchema = z.enum(['development', 'test', 'production'])
 // Add bot user configuration
 export const botUserConfig = {
     email: 'ai-bot@test.com',
-    name: 'AI Bot',
+    name: 'Bot',
     avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=ai-test',
 } as const
 
