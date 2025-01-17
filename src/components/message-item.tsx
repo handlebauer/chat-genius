@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { SmilePlus, Reply } from 'lucide-react'
+import { SmilePlus, Reply, MessageSquare, Bot } from 'lucide-react'
 import { MessageAttachments } from './message-attachments'
 import { MessageReactions } from './message-reactions'
 import { ThreadView } from './thread-view'
@@ -25,6 +25,14 @@ import {
 import { useState, useRef, useMemo, useCallback } from 'react'
 import { formatMentionText } from '@/lib/utils/mentions'
 import { useRouter } from 'next/navigation'
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu'
+import { createDM } from '@/lib/actions/create-dm'
+import type { Channel, UserData } from '@/lib/store'
 
 type User = Database['public']['Tables']['users']['Row']
 
@@ -137,6 +145,10 @@ export function MessageItem({
     const toggleReactionFn = useStore(state => state.toggleReaction)
     const mentionedUsers = useStore(state => state.mentionedUsers)
     const selectMessage = useStore(state => state.selectMessage)
+    const dmParticipants = useStore(state => state.dmParticipants)
+    const setChannels = useStore(state => state.setChannels)
+    const channels = useStore(state => state.channels)
+    const setUserMenuTarget = useStore(state => state.setUserMenuTarget)
 
     // Handle message mention clicks
     const handleMessageClick = useCallback(
@@ -253,6 +265,77 @@ export function MessageItem({
         }
     }
 
+    const handleSenderClick = useCallback(async () => {
+        // Don't create a DM with yourself
+        if (message.sender.id === currentUser.id) return
+
+        try {
+            // Transform sender into UserData type
+            const userData: UserData = {
+                id: message.sender.id,
+                name: message.sender.name,
+                email: message.sender.email,
+                avatar_url: message.sender.avatar_url,
+                created_at: message.sender.created_at,
+                updated_at: message.sender.updated_at,
+                status: null,
+            }
+
+            // Check for existing DM channel
+            const existingChannel = channels?.find(
+                channel =>
+                    channel.channel_type === 'direct_message' &&
+                    dmParticipants[channel.id]?.id === message.sender.id,
+            )
+
+            if (existingChannel) {
+                // Store participant info and navigate
+                useStore
+                    .getState()
+                    .setDMParticipant(existingChannel.id, userData)
+                router.push(`/chat/${existingChannel.id}`)
+            } else {
+                // Create new DM channel
+                const channel = await createDM(
+                    currentUser.id,
+                    message.sender.id,
+                )
+                if (!channel) {
+                    throw new Error('Failed to create DM channel')
+                }
+
+                // Update channels in store
+                setChannels([
+                    ...channels.filter(c => c.channel_type === 'channel'),
+                    ...channels.filter(
+                        c =>
+                            c.channel_type === 'direct_message' &&
+                            c.id !== channel.id,
+                    ),
+                    channel,
+                ])
+
+                // Store participant info and navigate
+                useStore.getState().setDMParticipant(channel.id, userData)
+                router.push(`/chat/${channel.id}`)
+            }
+        } catch (error) {
+            console.error('Failed to create or navigate to DM:', error)
+        }
+    }, [
+        message.sender,
+        currentUser.id,
+        router,
+        channels,
+        dmParticipants,
+        setChannels,
+    ])
+
+    const handleAvatarChat = () => {
+        // TODO: Implement avatar chat
+        console.log('Start avatar chat with:', message.sender.id)
+    }
+
     return (
         <div
             ref={handleRef}
@@ -272,25 +355,72 @@ export function MessageItem({
             )}
         >
             <div className="flex gap-2 items-start p-1 pb-[2px] relative">
-                <Avatar className="w-7 h-7 mt-[2px]">
-                    <AvatarImage
-                        src={message.sender.avatar_url || undefined}
-                        alt={message.sender.name || message.sender.email}
-                    />
-                    <AvatarFallback className="text-xs">
-                        {message.sender.name
-                            ? message.sender.name.substring(0, 2).toUpperCase()
-                            : message.sender.email
-                                  .substring(0, 2)
-                                  .toUpperCase()}
-                    </AvatarFallback>
-                </Avatar>
+                <ContextMenu>
+                    <ContextMenuTrigger asChild>
+                        <div className="cursor-pointer select-none">
+                            <Avatar className="w-7 h-7 mt-[2px]">
+                                <AvatarImage
+                                    src={message.sender.avatar_url || undefined}
+                                    alt={
+                                        message.sender.name ||
+                                        message.sender.email
+                                    }
+                                />
+                                <AvatarFallback className="text-xs">
+                                    {message.sender.name
+                                        ? message.sender.name
+                                              .substring(0, 2)
+                                              .toUpperCase()
+                                        : message.sender.email
+                                              .substring(0, 2)
+                                              .toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                        </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                        <ContextMenuItem
+                            className="cursor-pointer select-none"
+                            onClick={handleSenderClick}
+                        >
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Send DM
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                            className="cursor-pointer select-none"
+                            onClick={handleAvatarChat}
+                        >
+                            <Bot className="mr-2 h-4 w-4" />
+                            Chat with Avatar
+                        </ContextMenuItem>
+                    </ContextMenuContent>
+                </ContextMenu>
                 <div className="space-y-0.5 flex-1">
                     <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium">
-                            {message.sender.name ||
-                                message.sender.email.split('@')[0]}
-                        </span>
+                        <ContextMenu>
+                            <ContextMenuTrigger asChild>
+                                <span className="text-sm font-medium cursor-pointer select-none">
+                                    {message.sender.name ||
+                                        message.sender.email.split('@')[0]}
+                                </span>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                                <ContextMenuItem
+                                    className="cursor-pointer select-none"
+                                    onClick={handleSenderClick}
+                                >
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    Send DM
+                                </ContextMenuItem>
+                                <ContextMenuItem
+                                    className="cursor-pointer select-none"
+                                    onClick={handleAvatarChat}
+                                >
+                                    <Bot className="mr-2 h-4 w-4" />
+                                    Chat with Avatar
+                                </ContextMenuItem>
+                            </ContextMenuContent>
+                        </ContextMenu>
                         <span className="text-[11px] text-zinc-500 font-normal">
                             {new Date(message.created_at).toLocaleTimeString(
                                 [],

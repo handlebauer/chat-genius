@@ -141,6 +141,11 @@ interface ChannelMembersState {
     removeChannelMember: (channelId: string, memberId: string) => void
 }
 
+interface UserMenuTarget {
+    user: Database['public']['Tables']['users']['Row']
+    position: { x: number; y: number }
+}
+
 // Combined store type
 interface Store
     extends MessagesState,
@@ -150,7 +155,10 @@ interface Store
         MentionedUsersState,
         DMParticipantsState,
         UnreadMessagesState,
-        ChannelMembersState {}
+        ChannelMembersState {
+    userMenuTarget: UserMenuTarget | null
+    setUserMenuTarget: (target: UserMenuTarget | null) => void
+}
 
 // Create store
 export const useStore = create<Store>((set, get) => ({
@@ -448,6 +456,9 @@ export const useStore = create<Store>((set, get) => ({
                 ),
             },
         })),
+
+    userMenuTarget: null,
+    setUserMenuTarget: target => set({ userMenuTarget: target }),
 }))
 
 // Create a stable selector at the module level
