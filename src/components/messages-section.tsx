@@ -3,7 +3,6 @@
 import { MessageList } from './message-list'
 import { MessagesErrorBoundary } from './messages-error-boundary'
 import { ErrorBoundary } from 'react-error-boundary'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useEffect, useRef } from 'react'
 import { useRealTimeMessages } from '@/hooks/use-real-time-messages'
 import { UserData, useStore } from '@/lib/store'
@@ -60,6 +59,7 @@ export function MessagesSection({
                 handleAvatarInitialMessage(
                     currentChannel.id,
                     dmParticipant.id,
+                    userData.id,
                 ).catch(console.error)
             } else {
                 setAiResponseLoading(currentChannel.id, false)

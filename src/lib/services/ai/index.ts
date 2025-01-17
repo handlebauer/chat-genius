@@ -1,32 +1,20 @@
 import OpenAI from 'openai'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/types'
-import { AICommandHandler, AIResponse } from './types'
+import type { AICommandHandler, AIResponse, CommandContext } from './types'
 import { askChannelCommand } from './commands/ask-channel'
 import { askAllChannelsCommand } from './commands/ask-all-channels'
 import { avatarInitial } from './commands/avatar-initial'
 
 export class AIService {
     private openai: OpenAI
-    private supabase: ReturnType<typeof createClient<Database>>
     private commands: Map<string, AICommandHandler>
 
-    constructor() {
+    constructor(apiKey: string) {
         this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
+            apiKey,
         })
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseServiceKey =
-            process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
-
-        if (!supabaseUrl || !supabaseServiceKey) {
-            throw new Error('Missing Supabase environment variables')
-        }
-
-        this.supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
-
-        // Register commands
         this.commands = new Map([
             ['ask-channel', askChannelCommand],
             ['ask-all-channels', askAllChannelsCommand],
@@ -34,46 +22,48 @@ export class AIService {
         ])
     }
 
-    private async generateEmbedding(text: string): Promise<number[]> {
-        const response = await this.openai.embeddings.create({
-            model: 'text-embedding-3-small',
-            input: text,
-            encoding_format: 'float',
-        })
-
-        return response.data[0].embedding
-    }
-
-    public async handleCommand(
+    async handleCommand(
         commandId: string,
         question: string,
         channelId?: string,
+        commandContext?: CommandContext,
     ): Promise<AIResponse> {
         const command = this.commands.get(commandId)
         if (!command) {
-            throw new Error(`Unknown command: ${commandId}`)
+            throw new Error(`Command ${commandId} not found`)
         }
 
-        const context = {
-            openai: this.openai,
-            supabase: this.supabase,
-            generateEmbedding: this.generateEmbedding.bind(this),
-        }
+        const supabase = await createClient()
 
         try {
-            return await command.handleQuestion({
+            const response = await command.handleQuestion({
                 question,
                 channelId,
-                context,
+                context: {
+                    openai: this.openai,
+                    supabase,
+                    generateEmbedding: this.generateEmbedding.bind(this),
+                },
+                commandContext,
             })
+
+            return response
         } catch (error) {
-            console.error(`Error handling command ${commandId}:`, error)
+            console.error('Error handling command', commandId, ':', error)
             throw new Error(
                 'Failed to process your question. Please try again.',
             )
         }
     }
+
+    private async generateEmbedding(text: string): Promise<number[]> {
+        const response = await this.openai.embeddings.create({
+            model: 'text-embedding-ada-002',
+            input: text,
+        })
+
+        return response.data[0].embedding
+    }
 }
 
-// Export a singleton instance
-export const aiService = new AIService()
+export const aiService = new AIService(process.env.OPENAI_API_KEY || '')

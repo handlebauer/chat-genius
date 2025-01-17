@@ -3,6 +3,7 @@ import {
     AICommandHandler,
     AIResponse,
     SearchResult,
+    CommandContext,
 } from '../types'
 import { formatMessageContext } from '../utils'
 
@@ -38,7 +39,7 @@ INCORRECT User Mentions:
 - John (missing @ and span)
 - <span class="mention" data-user-id="123">John</span> (missing @)
 
-## Message Mnetion Flow
+## Message Mention Flow
 1. ALWAYS include message mentions in your response
 
 ## Response Guidelines
@@ -62,7 +63,11 @@ export const askAllChannelsCommand: AICommandHandler = {
     commandId: 'ask-all-channels',
     systemPrompt: SYSTEM_PROMPT,
 
-    async handleQuestion({ question, context }): Promise<AIResponse> {
+    async handleQuestion({
+        question,
+        context,
+        commandContext,
+    }): Promise<AIResponse> {
         const embedding = await context.generateEmbedding(question)
         const relevantMessages = await searchSimilarMessages(embedding, context)
 
@@ -165,7 +170,11 @@ async function enrichMessagesWithSenderInfo(
 
     return messages.map(msg => ({
         ...msg,
-        sender: userMap[msg.sender_id],
+        sender: {
+            id: userMap[msg.sender_id].id,
+            name: userMap[msg.sender_id].name || 'Unknown',
+            email: userMap[msg.sender_id].email,
+        },
     }))
 }
 
@@ -192,8 +201,6 @@ async function generateResponse(
         temperature: 0.7,
         max_tokens: 500,
     })
-
-    console.log({ messageContext })
 
     return (
         response.choices[0].message.content ||

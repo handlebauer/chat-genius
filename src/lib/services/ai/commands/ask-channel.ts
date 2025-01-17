@@ -3,6 +3,7 @@ import {
     AICommandHandler,
     AIResponse,
     SearchResult,
+    CommandContext,
 } from '../types'
 import { formatMessageContext } from '../utils'
 
@@ -50,7 +51,7 @@ CORRECT Message Mentions: When provided "COPY_THIS_EXACT_MESSAGE_MENTION: <span 
 
 INCORRECT Message Mentions:
 - <span>deployment steps</span> (missing attributes)
-- deployment steps explained (missing span)
+- deployment steps (missing span)
 - <span class="message-mention message-mention-text" data-channel-id="123">steps</span> (missing data-message-id)
 - <span class="message-mention message-mention-text" data-message-id="abc">steps</span> (missing data-channel-id)
 - <span class="message-mention message-mention-text" data-message-id="different-id" data-channel-id="different-id">steps</span> (modified attributes)
@@ -95,6 +96,7 @@ export const askChannelCommand: AICommandHandler = {
         question,
         channelId,
         context,
+        commandContext,
     }): Promise<AIResponse> {
         if (!channelId) {
             throw new Error('Channel ID is required for ask-channel command')
@@ -199,7 +201,11 @@ async function enrichMessagesWithSenderInfo(
 
     return messages.map(msg => ({
         ...msg,
-        sender: userMap[msg.sender_id],
+        sender: {
+            id: userMap[msg.sender_id].id,
+            name: userMap[msg.sender_id].name || 'Unknown',
+            email: userMap[msg.sender_id].email,
+        },
     }))
 }
 
@@ -225,10 +231,6 @@ async function generateResponse(
         ],
         temperature: 0.7,
         max_tokens: 500,
-    })
-
-    console.log({
-        messageContext,
     })
 
     return (

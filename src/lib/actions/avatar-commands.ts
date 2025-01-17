@@ -2,33 +2,75 @@
 
 import { aiService } from '@/lib/services/ai'
 import { createClient } from '@/lib/supabase/server'
+import type { CommandContext } from '@/lib/services/ai/types'
 
 /**
  * Handle the initial message when a user starts a conversation with an avatar
  */
 export async function handleAvatarInitialMessage(
     channelId: string,
-    userId: string,
+    avatarUserId: string,
+    currentUserId: string,
 ) {
     const supabase = await createClient()
 
     try {
-        // Get the avatar's user ID (the one with the internal email)
-        const { data: avatarUser } = await supabase
-            .from('users')
-            .select('id, name')
-            .eq('id', userId)
-            .single()
+        // Get all user info in parallel
+        const [{ data: avatarUser }, { data: currentUser }] = await Promise.all(
+            [
+                supabase
+                    .from('users')
+                    .select('id, name, email')
+                    .eq('id', avatarUserId)
+                    .single(),
+                supabase
+                    .from('users')
+                    .select('id, name')
+                    .eq('id', currentUserId)
+                    .single(),
+            ],
+        )
 
         if (!avatarUser) {
             throw new Error('Avatar user not found')
         }
 
+        if (!currentUser) {
+            throw new Error('Current user not found')
+        }
+
+        // Extract original user ID from avatar's email
+        // Format: avatar-bot-{originalUserId}@chatgenius.internal
+        const originalUserId = avatarUser.email
+            .split('@')[0]
+            .split('avatar-bot-')[1]
+        if (!originalUserId) {
+            throw new Error(
+                'Could not extract original user ID from avatar email',
+            )
+        }
+
+        // Get original user's info
+        const { data: originalUser } = await supabase
+            .from('users')
+            .select('id, name')
+            .eq('id', originalUserId)
+            .single()
+
+        // Prepare command context with all available info
+        const commandContext: CommandContext = {
+            originalUserId,
+            originalUserName: originalUser?.name,
+            currentUserId,
+            currentUserName: currentUser?.name,
+        }
+
         // Get response from AI service
         const aiResponse = await aiService.handleCommand(
             'avatar-initial',
-            `Initial greeting as ${avatarUser.name}`,
+            'Initial greeting',
             channelId,
+            commandContext,
         )
 
         // Create the avatar's response message

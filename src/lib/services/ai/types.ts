@@ -1,16 +1,26 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type OpenAI from 'openai'
+import type { Database } from '@/lib/supabase/types'
+
+export interface AICommandContext {
+    supabase: SupabaseClient<Database>
+    openai: OpenAI
+    generateEmbedding: (text: string) => Promise<number[]>
+}
+
 export interface SearchResult {
     id: string
     content: string
-    channel_id: string
-    channel_name?: string
     sender_id: string
-    sender?: {
-        id: string
-        name: string | null
-        email: string
-    }
+    channel_id: string
+    channel_name: string
     created_at: string
     similarity: number
+    sender?: {
+        id: string
+        name: string
+        email: string
+    }
 }
 
 export interface AIResponse {
@@ -18,10 +28,12 @@ export interface AIResponse {
     relevantMessages?: SearchResult[]
 }
 
-export interface AICommandContext {
-    openai: any // Replace with proper OpenAI type
-    supabase: any // Replace with proper Supabase client type
-    generateEmbedding: (text: string) => Promise<number[]>
+export interface CommandContext {
+    // Add any shared context fields here
+    originalUserId?: string | null
+    currentUserId?: string | null
+    originalUserName?: string | null
+    currentUserName?: string | null
 }
 
 export interface AICommandHandler {
@@ -31,5 +43,6 @@ export interface AICommandHandler {
         question: string
         channelId?: string
         context: AICommandContext
+        commandContext?: CommandContext
     }) => Promise<AIResponse>
 }
