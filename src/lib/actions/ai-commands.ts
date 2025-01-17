@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 /**
  * Handle the /question command by:
  * 1. Getting an AI-generated response using relevant context
- * 2. Creating a new message from the AI bot
+ * 2. Creating a new message from the AI bot in the bot's DM channel
  * 3. Revalidating the page to show the new message
  */
 export async function handleQuestionCommand(
@@ -35,17 +35,80 @@ export async function handleQuestionCommand(
             channelId,
         )
 
-        // Create the bot's response message
-        const { error: messageError } = await supabase.from('messages').insert({
-            content: aiResponse.content,
-            channel_id: channelId,
-            sender_id: botUser.id,
-            // If we have relevant messages, store their IDs for potential future use
-            thread_id: null, // For now, not starting a thread
-        })
+        // For AI bot commands (not avatar commands), send to bot's DM channel
+        if (commandId === 'ask-channel' || commandId === 'ask-all-channels') {
+            // Get the current user's ID from the auth session
+            const session = await supabase.auth.getSession()
+            const currentUserId = session.data.session?.user.id
+            if (!currentUserId) {
+                throw new Error('User not authenticated')
+            }
 
-        if (messageError) {
-            throw messageError
+            // Find the DM channel between the current user and the AI bot
+            const { data: channels } = await supabase
+                .from('channel_members')
+                .select('channel_id')
+                .eq('user_id', currentUserId)
+
+            if (!channels) {
+                throw new Error('Could not find user channels')
+            }
+
+            const channelIds = channels.map(c => c.channel_id)
+            const { data: botChannels } = await supabase
+                .from('channel_members')
+                .select('channel_id')
+                .eq('user_id', botUser.id)
+                .in('channel_id', channelIds)
+
+            if (!botChannels || botChannels.length === 0) {
+                throw new Error('Could not find bot DM channel')
+            }
+
+            // Get the first DM channel between user and bot
+            const { data: dmChannel } = await supabase
+                .from('channels')
+                .select('id')
+                .eq('channel_type', 'direct_message')
+                .in(
+                    'id',
+                    botChannels
+                        .map(c => c.channel_id)
+                        .filter((id): id is string => id !== null),
+                )
+                .single()
+
+            if (!dmChannel) {
+                throw new Error('Could not find bot DM channel')
+            }
+
+            // Create the bot's response message in the DM channel
+            const { error: messageError } = await supabase
+                .from('messages')
+                .insert({
+                    content: aiResponse.content,
+                    channel_id: dmChannel.id,
+                    sender_id: botUser.id,
+                    thread_id: null,
+                })
+
+            if (messageError) {
+                throw messageError
+            }
+        } else {
+            // For avatar commands, send to the original channel
+            const { error: messageError } = await supabase
+                .from('messages')
+                .insert({
+                    content: aiResponse.content,
+                    channel_id: channelId,
+                    sender_id: botUser.id,
+                    thread_id: null,
+                })
+
+            if (messageError) {
+                throw messageError
+            }
         }
 
         return { success: true }

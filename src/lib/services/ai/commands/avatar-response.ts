@@ -5,7 +5,6 @@ import {
     AIResponse,
     SearchResult,
 } from '../types'
-import { formatMessageContext } from '../utils'
 
 const SYSTEM_PROMPT = `You are an AI avatar that perfectly mirrors the communication style, expertise, and personality of a specific user (the "style user"). Your task is to respond to messages from another user (the "conversation partner") in a way that perfectly matches how the style user would respond.
 
@@ -98,7 +97,7 @@ async function searchUserMessages(
     userId: string,
     context: AICommandContext,
     limit = 10,
-    similarity_threshold = 0.5,
+    similarity_threshold = 0.2,
 ): Promise<SearchResult[]> {
     // First get messages using semantic search
     const { data: messages, error } = await context.supabase.rpc(
@@ -238,7 +237,7 @@ async function generateResponse(
 ): Promise<string> {
     // Format style context using the same formatting as ask-channel
     const styleContext = relevantStyleMessages
-        .map(formatMessageContext)
+        .map(msg => msg.content)
         .join('\n')
 
     // Format conversation history

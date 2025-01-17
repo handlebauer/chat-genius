@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import { useShallow } from 'zustand/react/shallow'
 import { createClient } from '@/lib/supabase/client'
+import { botUserConfig } from '@/config'
 import type { Database } from '@/lib/supabase/types'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import {
@@ -74,6 +75,7 @@ export function useRealTimeMessages(channelId: string) {
         state => state.markChannelInitialized,
     )
     const initializedChannels = useStore(state => state.initializedChannels)
+    const channels = useStore(state => state.channels)
 
     // Load initial messages
     useEffect(() => {
@@ -321,297 +323,127 @@ export function useRealTimeMessages(channelId: string) {
         markChannelInitialized,
     ])
 
-    // Set up real-time subscription
+    // Subscribe to real-time updates
     useEffect(() => {
-        if (!channelId) return
+        if (!channelId || !userData) return
 
-        const channel = supabase
-            .channel(`channel-${channelId}`, {
-                config: {
-                    broadcast: { self: true },
-                },
-            })
+        const currentUserId = userData.id
+
+        // Find the bot's DM channel with the current user
+        const botDmChannel = channels.find(
+            c =>
+                c.channel_type === 'direct_message' &&
+                c.name.includes(userData.id) &&
+                c.name.includes(botUserConfig.email),
+        )
+
+        // Create a filter for both the current channel and the bot's DM channel
+        const filter = botDmChannel
+            ? `channel_id=eq.${channelId},channel_id=eq.${botDmChannel.id}`
+            : `channel_id=eq.${channelId}`
+
+        // Subscribe to message changes
+        const subscription = supabase
+            .channel('messages')
             .on(
                 'postgres_changes',
                 {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
-                    filter: `channel_id=eq.${channelId}`,
+                    filter,
                 },
-                async (payload: RealtimePostgresChangesPayload<MessageRow>) => {
-                    if (!payload.new || !isMessageRow(payload.new)) return
+                async payload => {
+                    const { new: newMessage } = payload
+                    if (!isMessageRow(newMessage)) return
 
-                    // For new messages, we need to check if it's a thread reply or a main message
-                    if (payload.new.thread_id) {
-                        // It's a thread reply, we need to update the parent message's thread data
-                        const { data: threadData } = await supabase
-                            .from('threads')
-                            .select(
-                                `
-                id,
-                parent_message_id,
-                created_at,
-                replies:messages!thread_id(
-                  id,
-                  content,
-                  created_at,
-                  sender:users!messages_sender_id_fkey(
-                    id,
-                    name,
-                    email,
-                    avatar_url,
-                    status,
-                    created_at,
-                    updated_at
-                  )
-                )
-              `,
-                            )
-                            .eq('id', payload.new.thread_id)
-                            .single()
+                    // Get the sender's information
+                    const { data: sender } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', newMessage.sender_id)
+                        .single()
 
-                        if (threadData) {
-                            // Update the parent message with new thread data
-                            const currentMessages = messages[channelId] || []
-                            const parentMessage = currentMessages.find(
-                                m => m.id === threadData.parent_message_id,
-                            )
+                    if (!sender) return
 
-                            if (parentMessage) {
-                                const replies = (threadData.replies || []).map(
-                                    reply => ({
-                                        id: reply.id,
-                                        content: reply.content,
-                                        created_at: reply.created_at,
-                                        sender: reply.sender as unknown as Database['public']['Tables']['users']['Row'],
-                                    }),
-                                )
+                    // Get any attachments
+                    const { data: attachments } = await supabase
+                        .from('attachments')
+                        .select('*')
+                        .eq('message_id', newMessage.id)
 
-                                const updatedMessage = {
-                                    ...parentMessage,
-                                    thread: {
-                                        id: threadData.id,
-                                        reply_count: replies.length,
-                                        last_reply_at:
-                                            replies[replies.length - 1]
-                                                ?.created_at ||
-                                            threadData.created_at,
-                                        replies,
-                                    },
-                                } as unknown as Message
+                    // Get any reactions
+                    const { data: reactions } = await supabase
+                        .from('reactions')
+                        .select('emoji, user_id')
+                        .eq('message_id', newMessage.id)
 
-                                setMessages(
-                                    channelId,
-                                    currentMessages.map(m =>
-                                        m.id === updatedMessage.id
-                                            ? updatedMessage
-                                            : m,
-                                    ),
-                                )
-                            }
-                        }
-                    } else {
-                        // It's a new main message, fetch it with its data
-                        const { data: messageData } = await supabase
-                            .from('messages')
-                            .select(
-                                `
-                id,
-                content,
-                created_at,
-                channel_id,
-                sender:users!messages_sender_id_fkey(
-                  id,
-                  name,
-                  email,
-                  avatar_url,
-                  status,
-                  created_at,
-                  updated_at
-                ),
-                attachments(
-                  id,
-                  file_name,
-                  file_size,
-                  file_type,
-                  storage_path,
-                  content_type,
-                  created_at,
-                  updated_at
-                )
-              `,
-                            )
-                            .eq('id', payload.new.id)
-                            .single()
-
-                        if (messageData) {
-                            // Handle mentions in the new message
-                            const { userIds } = parseMentions(
-                                messageData.content,
-                            )
-                            if (userIds.length > 0) {
-                                const { data: users } = await supabase
-                                    .from('users')
-                                    .select(
-                                        'id, name, email, avatar_url, status, created_at, updated_at',
-                                    )
-                                    .in('id', userIds)
-
-                                if (users) {
-                                    const mentionedUsers = users.reduce(
-                                        (acc, user) => {
-                                            acc[user.id] = user
-                                            return acc
-                                        },
-                                        {} as Record<
-                                            string,
-                                            Database['public']['Tables']['users']['Row']
-                                        >,
-                                    )
-                                    // Add mentioned users to the global store
-                                    addMentionedUsers(mentionedUsers)
-                                    // Format the message content with user data
-                                    messageData.content = formatMentionText(
-                                        messageData.content,
-                                        mentionedUsers,
-                                    )
+                    // Process reactions
+                    const reactionGroups = (reactions || []).reduce(
+                        (acc, reaction) => {
+                            if (!acc[reaction.emoji]) {
+                                acc[reaction.emoji] = {
+                                    emoji: reaction.emoji,
+                                    count: 0,
+                                    hasReacted: false,
                                 }
                             }
-
-                            const message = {
-                                ...messageData,
-                                sender: messageData.sender as unknown as Database['public']['Tables']['users']['Row'],
-                            }
-                            addMessage(channelId, message as Message)
-                        }
-                    }
-                },
-            )
-
-        channel.subscribe()
-
-        return () => {
-            channel.unsubscribe()
-        }
-    }, [
-        supabase,
-        channelId,
-        messages,
-        setMessages,
-        addMessage,
-        addMentionedUsers,
-    ])
-
-    // Set up real-time subscription for reactions
-    useEffect(() => {
-        if (!channelId || !userData?.id) return
-
-        type ReactionRecord = Database['public']['Tables']['reactions']['Row']
-        type ReactionPayload = RealtimePostgresChangesPayload<ReactionRecord>
-
-        const channel = supabase.channel(`reactions-${channelId}`).on(
-            'postgres_changes',
-            {
-                event: '*',
-                schema: 'public',
-                table: 'reactions',
-            },
-            async (payload: ReactionPayload) => {
-                const record = payload.new || payload.old
-                if (
-                    !record ||
-                    !('message_id' in record) ||
-                    !('user_id' in record)
-                )
-                    return
-
-                const messageId = record.message_id
-                if (typeof messageId !== 'string') return
-
-                // Skip if this is our own reaction (handled by optimistic update)
-                if (record.user_id === userData.id) return
-
-                // First verify this message belongs to our channel
-                const { data: message } = await supabase
-                    .from('messages')
-                    .select('channel_id')
-                    .eq('id', messageId)
-                    .single()
-
-                if (!message || message.channel_id !== channelId) return
-
-                // Get the current message from the store
-                const currentMessage = messages[channelId]?.find(
-                    m => m.id === messageId,
-                )
-                if (!currentMessage) return
-
-                // Get the updated reactions for the message
-                const { data: updatedReactions } = await supabase
-                    .from('reactions')
-                    .select('emoji, user_id')
-                    .eq('message_id', messageId)
-
-                if (updatedReactions) {
-                    const reactionGroups = updatedReactions.reduce(
-                        (
-                            acc: Record<
-                                string,
-                                { count: number; users: string[] }
-                            >,
-                            reaction,
-                        ) => {
-                            if (
-                                !reaction ||
-                                !reaction.emoji ||
-                                reaction.user_id === null
-                            )
-                                return acc
-
-                            if (!acc[reaction.emoji]) {
-                                acc[reaction.emoji] = { count: 0, users: [] }
-                            }
                             acc[reaction.emoji].count++
-                            acc[reaction.emoji].users.push(reaction.user_id)
+                            if (reaction.user_id === currentUserId) {
+                                acc[reaction.emoji].hasReacted = true
+                            }
                             return acc
                         },
-                        {},
+                        {} as Record<string, Reaction>,
                     )
 
-                    const formattedReactions = Object.entries(
-                        reactionGroups,
-                    ).map(([emoji, data]) => ({
-                        emoji,
-                        count: data.count,
-                        hasReacted: data.users.includes(userData.id),
-                    }))
+                    // Handle mentions in the new message
+                    const { userIds } = parseMentions(newMessage.content)
+                    let formattedContent = newMessage.content
 
-                    // Only update if the reactions have actually changed
-                    const currentReactions = currentMessage.reactions || []
-                    const hasChanged =
-                        JSON.stringify(currentReactions) !==
-                        JSON.stringify(formattedReactions)
+                    if (userIds.length > 0) {
+                        const { data: mentionedUsers } = await supabase
+                            .from('users')
+                            .select('*')
+                            .in('id', userIds)
 
-                    if (hasChanged) {
-                        useStore
-                            .getState()
-                            .updateMessageReactions(
-                                messageId,
-                                channelId,
-                                formattedReactions,
+                        if (mentionedUsers) {
+                            const mentionedUsersMap = mentionedUsers.reduce(
+                                (acc, user) => {
+                                    acc[user.id] = user
+                                    return acc
+                                },
+                                {} as Record<
+                                    string,
+                                    Database['public']['Tables']['users']['Row']
+                                >,
                             )
+                            addMentionedUsers(mentionedUsersMap)
+                            formattedContent = formatMentionText(
+                                newMessage.content,
+                                mentionedUsersMap,
+                            )
+                        }
                     }
-                }
-            },
-        )
 
-        channel.subscribe()
+                    // Add the message to the store
+                    addMessage(newMessage.channel_id, {
+                        id: newMessage.id,
+                        content: formattedContent,
+                        sender,
+                        created_at: newMessage.created_at,
+                        channel_id: newMessage.channel_id,
+                        attachments: attachments || undefined,
+                        reactions: Object.values(reactionGroups),
+                    })
+                },
+            )
+            .subscribe()
 
         return () => {
-            channel.unsubscribe()
+            subscription.unsubscribe()
         }
-    }, [channelId, supabase, userData?.id, messages])
+    }, [channelId, userData, channels])
 
     return {
         messages: channelId ? messages[channelId] || [] : [],

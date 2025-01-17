@@ -186,6 +186,8 @@ async function generateResponse(
 ): Promise<string> {
     const messageContext = relevantMessages.map(formatMessageContext).join('\n')
 
+    console.log('🔍 Message Context:', messageContext)
+
     const response = await context.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [

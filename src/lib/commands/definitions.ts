@@ -28,6 +28,19 @@ export const commands: Command[] = [
                     const store = useStore.getState()
                     const channelId = store.activeChannelId
                     const channel = store.channels.find(c => c.id === channelId)
+
+                    if (
+                        channel?.channel_type === 'direct_message' &&
+                        store.userData
+                    ) {
+                        // For DM channels, show the other participant's name
+                        const otherParticipant = store.getDMParticipant(
+                            channelId,
+                            store.userData.id,
+                        )
+                        return otherParticipant?.name || 'DM'
+                    }
+
                     return channel?.name ? `#${channel.name}` : 'channel'
                 },
             },
