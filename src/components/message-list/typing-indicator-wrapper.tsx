@@ -1,6 +1,8 @@
 import { TypingIndicator } from '../typing-indicator'
 import { botUserConfig } from '@/config'
 import type { MessageListProps } from './types'
+import { useState, useEffect } from 'react'
+import { isInternalAvatar, isBotUser } from '@/lib/utils'
 
 interface TypingIndicatorWrapperProps {
     isVisible: boolean
@@ -13,22 +15,41 @@ export function TypingIndicatorWrapper({
     dmParticipant,
     currentChannel,
 }: TypingIndicatorWrapperProps) {
-    if (!isVisible) return null
+    const [showIndicator, setShowIndicator] = useState(false)
 
-    const isInternalAvatar = dmParticipant?.email?.includes(
-        '@chatgenius.internal',
-    )
-    const isAiBotDm = dmParticipant?.email === botUserConfig.email
+    useEffect(() => {
+        let timeoutId: ReturnType<typeof setTimeout>
+
+        if (isVisible) {
+            // Add a 750ms delay before showing the typing indicator
+            timeoutId = setTimeout(() => {
+                setShowIndicator(true)
+            }, 750)
+        } else {
+            setShowIndicator(false)
+        }
+
+        return () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId)
+            }
+        }
+    }, [isVisible])
+
+    if (!showIndicator) return null
+
+    const isInternalAvatarUser = isInternalAvatar(dmParticipant?.email)
+    const isAiBotDm = isBotUser(dmParticipant?.email)
 
     // Only show typing indicator for:
     // 1. Avatar responses (in any channel)
     // 2. AI bot responses (only in the bot's DM channel)
-    if (!isInternalAvatar && !isAiBotDm) return null
+    if (!isInternalAvatarUser && !isAiBotDm) return null
 
     let name: string = botUserConfig.name
     let avatarUrl: string = botUserConfig.avatar_url
 
-    if (isInternalAvatar) {
+    if (isInternalAvatarUser) {
         name = dmParticipant?.name || `${currentChannel.name}'s Avatar`
         if (dmParticipant?.avatar_url) {
             avatarUrl = dmParticipant.avatar_url

@@ -1,17 +1,19 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
+import { Message } from '@/lib/store'
 import { handleAvatarInitialMessage } from '@/lib/actions/avatar-commands'
-import { useStore } from '@/lib/store'
+import { isInternalAvatar } from '@/lib/utils'
 
 interface UseAvatarInitialMessageProps {
     currentChannel: {
         id: string
+        name: string
         channel_type: string
     }
     dmParticipant?: {
         id: string
         email: string
     }
-    messages: any[] | null
+    messages: Message[]
     loading: boolean
     userId: string
 }
@@ -23,39 +25,31 @@ export function useAvatarInitialMessage({
     loading,
     userId,
 }: UseAvatarInitialMessageProps) {
-    const hasTriggeredInitialMessage = useRef<boolean>(false)
-    const setAiResponseLoading = useStore(state => state.setAiResponseLoading)
-
     useEffect(() => {
-        const isAvatarDM =
-            currentChannel?.channel_type === 'direct_message' &&
-            dmParticipant?.email?.includes('@chatgenius.internal')
-        const isEmptyChannel = messages?.length === 0
-
+        // Only proceed if:
+        // 1. Messages are loaded
+        // 2. Channel is a DM with an avatar
+        // 3. No messages exist yet
         if (
-            isAvatarDM &&
-            isEmptyChannel &&
-            !loading && // Make sure we're not still loading
-            !hasTriggeredInitialMessage.current
+            !loading &&
+            currentChannel.channel_type === 'direct_message' &&
+            isInternalAvatar(dmParticipant?.email) &&
+            messages.length === 0 &&
+            dmParticipant?.id // Make sure we have the avatar's ID
         ) {
-            hasTriggeredInitialMessage.current = true
-
-            if (dmParticipant?.id) {
-                handleAvatarInitialMessage(
-                    currentChannel.id,
-                    dmParticipant.id,
-                    userId,
-                ).catch(console.error)
-            } else {
-                setAiResponseLoading(currentChannel.id, false)
-            }
+            handleAvatarInitialMessage(
+                currentChannel.id,
+                dmParticipant.id,
+                userId,
+            )
         }
     }, [
-        currentChannel,
-        dmParticipant,
-        messages,
         loading,
+        currentChannel.channel_type,
+        currentChannel.id,
+        dmParticipant?.email,
+        dmParticipant?.id,
+        messages.length,
         userId,
-        setAiResponseLoading,
     ])
 }

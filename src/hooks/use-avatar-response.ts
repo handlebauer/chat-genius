@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { handleAvatarResponse } from '@/lib/actions/avatar-commands'
 import { useStore } from '@/lib/store'
+import { isInternalAvatar } from '@/lib/utils'
 
 interface UseAvatarResponseProps {
     currentChannel: {
@@ -28,7 +29,7 @@ export function useAvatarResponse({
     useEffect(() => {
         const isAvatarDM =
             currentChannel?.channel_type === 'direct_message' &&
-            dmParticipant?.email?.includes('@chatgenius.internal')
+            isInternalAvatar(dmParticipant?.email)
 
         if (!isAvatarDM || !messages?.length || loading) {
             return

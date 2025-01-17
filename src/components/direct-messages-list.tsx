@@ -9,7 +9,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { cn } from '@/lib/utils'
+import { cn, isInternalAvatar, isBotUser } from '@/lib/utils'
 import { useOnlineUsers } from '@/hooks/use-online-users'
 import { useIdleDetection } from '@/hooks/use-idle-detection'
 import { DirectMessageUser } from './direct-message-user'
@@ -87,8 +87,8 @@ export function DirectMessagesList({
 
                 if (!dmUser || !dmChannel) return null
 
-                // Always set bot as online, before any other status checks
-                if (dmUser.email === botUserConfig.email) {
+                // Always set internal avatars and bot as online
+                if (isBotUser(dmUser.email) || isInternalAvatar(dmUser.email)) {
                     return {
                         ...dmUser,
                         status: 'online',
@@ -172,8 +172,8 @@ export function DirectMessagesList({
     const sortedDmUsers = useMemo(() => {
         return [...dmUsersWithStatus].sort((a, b) => {
             // Always put bot user first, regardless of any other criteria
-            if (a.email === botUserConfig.email) return -1
-            if (b.email === botUserConfig.email) return 1
+            if (isBotUser(a.email)) return -1
+            if (isBotUser(b.email)) return 1
 
             // Rest of sorting logic for non-bot users
             // First sort by most recent message

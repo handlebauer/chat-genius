@@ -1,8 +1,17 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { botUserConfig } from '@/config'
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
+}
+
+export function isInternalAvatar(email?: string | null): boolean {
+    return Boolean(email?.includes('@chatgenius.internal'))
+}
+
+export function isBotUser(email?: string | null): boolean {
+    return email === botUserConfig.email
 }
 
 export function formatFileSize(bytes: number): string {

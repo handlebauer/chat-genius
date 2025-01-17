@@ -9,6 +9,7 @@ import { UserData } from '@/lib/store'
 import { EmptyMessages } from './message-list/empty-messages'
 import { useAvatarInitialMessage } from '@/hooks/use-avatar-initial-message'
 import { useAvatarResponse } from '@/hooks/use-avatar-response'
+import { isInternalAvatar } from '@/lib/utils'
 
 interface MessagesSectionProps {
     currentChannelId: string
@@ -63,7 +64,7 @@ export function MessagesSection({
     const isAvatarDM = useMemo(
         () =>
             currentChannel?.channel_type === 'direct_message' &&
-            dmParticipant?.email?.includes('@chatgenius.internal'),
+            isInternalAvatar(dmParticipant?.email),
         [currentChannel?.channel_type, dmParticipant?.email],
     )
 
@@ -75,9 +76,8 @@ export function MessagesSection({
     // Empty state (only shown after store is hydrated and messages are loaded)
     if (messages.length === 0) {
         if (isAvatarDM) {
-            return null
+            return <div className="flex-1"></div>
         }
-
         return (
             <div className="flex-1">
                 <EmptyMessages />
