@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Circle, ChevronDown } from 'lucide-react'
 import {
@@ -17,6 +17,9 @@ import { getStatusColor } from '@/lib/utils/status'
 import type { DMUser } from '@/hooks/use-chat-data'
 import type { Channel } from '@/lib/store'
 import { botUserConfig } from '@/config'
+import { createClient } from '@/lib/supabase/client'
+import { useStore } from '@/lib/store'
+import { useUnreadMessages } from '@/hooks/use-unread-messages'
 
 interface DirectMessagesListProps {
     userData: {
@@ -47,6 +50,11 @@ export function DirectMessagesList({
     const { onlineUsers } = useOnlineUsers({ userId })
     const { isIdle } = useIdleDetection()
     const router = useRouter()
+    const params = useParams() as { channelId?: string }
+    const clearUnreadCount = useStore(state => state.clearUnreadCount)
+
+    // Initialize unread messages subscription with active channel context
+    useUnreadMessages(userId, params.channelId)
 
     // Extract unique user IDs from DM channels - memoized with stable references
     const dmUserIds = useMemo(() => {
@@ -79,22 +87,27 @@ export function DirectMessagesList({
                 )
                 const dmUser = dmChannel ? dmUsers[dmChannel.id] : null
 
-                if (!dmUser) return null
+                if (!dmUser || !dmChannel) return null
 
                 // Always set bot as online, before any other status checks
                 if (dmUser.email === botUserConfig.email) {
                     return {
                         ...dmUser,
                         status: 'online',
-                    } as DMUserWithStatus
+                        channelId: dmChannel.id,
+                    }
                 }
 
                 return {
                     ...dmUser,
                     status: onlineUser?.status || 'offline',
-                } as DMUserWithStatus
+                    channelId: dmChannel.id,
+                }
             })
-            .filter((user): user is DMUserWithStatus => user !== null)
+            .filter(
+                (user): user is DMUserWithStatus & { channelId: string } =>
+                    user !== null,
+            )
     }, [dmUserIds, onlineUsers, dmUsers, directMessages])
 
     const handleUserClick = useCallback(
@@ -105,10 +118,21 @@ export function DirectMessagesList({
             )
 
             if (existingChannel) {
+                // Clear unread count in local state immediately
+                clearUnreadCount(existingChannel.id)
+
+                // Navigate to the channel
                 router.push(`/chat/${existingChannel.id}`)
+
+                // Then clear unread count in the database
+                const supabase = createClient()
+                await supabase.rpc('reset_unread_count', {
+                    p_channel_id: existingChannel.id,
+                    p_user_id: userData.id,
+                })
             }
         },
-        [directMessages, dmUsers, router],
+        [directMessages, dmUsers, router, clearUnreadCount, userData.id],
     )
 
     const isUserActive = useCallback(
@@ -221,6 +245,7 @@ export function DirectMessagesList({
                             user={user}
                             isActive={isUserActive(user.id)}
                             onClick={() => handleUserClick(user.id)}
+                            channelId={user.channelId}
                         />
                     ))}
                 </div>
