@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+const DEFAULT_CHANNEL =
+    process.env.NODE_ENV === 'production' ? 'hello' : 'general'
+
 export default async function ChatPage() {
     const supabase = await createClient()
     const {
@@ -11,19 +14,19 @@ export default async function ChatPage() {
         redirect('/login')
     }
 
-    // Try to get the 'general' channel first
-    let { data: generalChannel } = await supabase
+    // Try to get the default channel first
+    let { data: defaultChannel } = await supabase
         .from('channels')
         .select('id')
-        .eq('name', 'general')
+        .eq('name', DEFAULT_CHANNEL)
         .single()
 
-    // If 'general' exists, redirect to it
-    if (generalChannel?.id) {
-        redirect(`/chat/${generalChannel.id}`)
+    // If default channel exists, redirect to it
+    if (defaultChannel?.id) {
+        redirect(`/chat/${defaultChannel.id}`)
     }
 
-    // If 'general' doesn't exist, fall back to the most recently created channel
+    // If default channel doesn't exist, fall back to the most recently created channel
     const { data: latestChannel } = await supabase
         .from('channels')
         .select('id')
