@@ -5,6 +5,7 @@ import type { AICommandHandler, AIResponse, CommandContext } from './types'
 import { askChannelCommand } from './commands/ask-channel'
 import { askAllChannelsCommand } from './commands/ask-all-channels'
 import { avatarInitial } from './commands/avatar-initial'
+import { avatarResponse } from './commands/avatar-response'
 
 export class AIService {
     private openai: OpenAI
@@ -19,6 +20,7 @@ export class AIService {
             ['ask-channel', askChannelCommand],
             ['ask-all-channels', askAllChannelsCommand],
             ['avatar-initial', avatarInitial],
+            ['avatar-response', avatarResponse],
         ])
     }
 
