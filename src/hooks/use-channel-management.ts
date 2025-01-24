@@ -100,7 +100,10 @@ export function useChannelManagement(userId: string) {
             await joinChannel(channelId, userId)
             // Update store immediately instead of waiting for real-time update
             const currentMemberships = useStore.getState().channelMemberships
-            setChannelMemberships({ ...currentMemberships, [channelId]: true })
+            setChannelMemberships({
+                ...currentMemberships,
+                [channelId]: { role: 'member' },
+            })
             router.push(`/chat/${channelId}`)
         } catch (error) {
             console.error('Failed to join channel:', error)
