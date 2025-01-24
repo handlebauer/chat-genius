@@ -5,9 +5,9 @@ import type { Database } from '@/lib/supabase/types'
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } },
+    { params }: { params: Promise<{ id: string }> },
 ) {
-    const webhookId = params.id
+    const { id: webhookId } = await params
     const supabase = createServiceClient<Database>(
         config.NEXT_PUBLIC_SUPABASE_URL,
         config.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY,
