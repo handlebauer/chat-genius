@@ -11,7 +11,9 @@ export interface ChannelMember {
 }
 
 export interface ChannelMemberships {
-    [channelId: string]: boolean
+    [channelId: string]: {
+        role: 'owner' | 'admin' | 'member'
+    }
 }
 
 interface ChannelMemberResponse {
@@ -162,7 +164,9 @@ export async function useChatData(user: User, channelId: string) {
     const channelMemberships = (userMemberships || []).reduce(
         (acc, membership) => {
             if (membership.channel_id) {
-                acc[membership.channel_id] = true
+                acc[membership.channel_id] = {
+                    role: membership.role,
+                }
             }
             return acc
         },

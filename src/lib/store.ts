@@ -105,7 +105,7 @@ interface ChannelsState {
     channels: Channel[]
     channelsLoading: boolean
     isHydrated: boolean
-    channelMemberships: Record<string, boolean>
+    channelMemberships: Record<string, { role: 'owner' | 'admin' | 'member' }>
     pendingActiveChannelId: string | null // Track channel that's being switched to
     setChannels: (channels: Channel[], isHydrating?: boolean) => void
     setChannelsLoading: (loading: boolean) => void
@@ -370,7 +370,8 @@ export const useStore = create<Store>((set, get) => ({
     },
     setChannelMemberships: channelMemberships => set({ channelMemberships }),
     isChannelMember: channelId => {
-        return get().channelMemberships[channelId] || false
+        const memberships = get().channelMemberships
+        return !!memberships[channelId]
     },
     getDMParticipant: channelId => {
         const { channels, dmParticipants } = get()

@@ -1,7 +1,15 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Hash, ChevronDown, Plus, Lock } from 'lucide-react'
+import {
+    Hash,
+    ChevronDown,
+    Plus,
+    Lock,
+    Plug,
+    Copy,
+    Plus as PlusIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
     Collapsible,
@@ -23,7 +31,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useRouter, useParams } from 'next/navigation'
 import { useChannelManagement } from '@/hooks/use-channel-management'
 import { UserData, useStore } from '@/lib/store'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import type { Database } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
 import { useUnreadMessages } from '@/hooks/use-unread-messages'
@@ -46,6 +54,8 @@ function ChannelButton({
     onJoin,
     isMember,
     unreadCount,
+    userId,
+    isOwner,
 }: {
     channel: Channel
     isActive: boolean
@@ -54,7 +64,11 @@ function ChannelButton({
     onJoin?: () => Promise<void>
     isMember: boolean
     unreadCount: number
+    userId: string
+    isOwner: boolean
 }) {
+    const [webhookDialogOpen, setWebhookDialogOpen] = useState(false)
+
     return (
         <div className="group relative">
             <Button
@@ -147,22 +161,39 @@ function ChannelButton({
                     </div>
                 )}
             </Button>
-            {!isMember && (
-                <div className="flex items-center justify-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {isOwner && isMember && (
+                    <Dialog
+                        open={webhookDialogOpen}
+                        onOpenChange={setWebhookDialogOpen}
+                    >
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="px-2 h-6 hover:bg-zinc-50/50 rounded-sm"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <Plug className="h-4 w-4 text-zinc-500" />
+                            </Button>
+                        </DialogTrigger>
+                        <WebhookDialog channel={channel} userId={userId} />
+                    </Dialog>
+                )}
+                {!isMember && onJoin && (
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={e => {
                             e.stopPropagation()
-                            if (onJoin) onJoin()
-                            else onClick() // For private channels, trigger the password dialog
+                            onJoin()
                         }}
                         className="px-2 h-6 hover:bg-zinc-50/50 rounded-sm text-xs text-zinc-500 hover:text-zinc-900"
                     >
                         Join
                     </Button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     )
 }
@@ -371,6 +402,93 @@ function PasswordDialog({
     )
 }
 
+function WebhookDialog({ channel }: { channel: Channel; userId: string }) {
+    const [webhooks, setWebhooks] = useState<Array<{ id: string }>>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const supabase = createClient()
+
+    useEffect(() => {
+        async function loadWebhooks() {
+            const { data, error } = await supabase
+                .from('channel_webhooks')
+                .select('*')
+                .eq('channel_id', channel.id)
+
+            if (!error && data) {
+                setWebhooks(data)
+            }
+            setIsLoading(false)
+        }
+
+        loadWebhooks()
+    }, [channel.id, supabase])
+
+    const createWebhook = async () => {
+        const { data, error } = await supabase
+            .from('channel_webhooks')
+            .insert([{ channel_id: channel.id }])
+            .select()
+            .single()
+
+        if (!error && data) {
+            setWebhooks(prev => [...prev, data])
+        }
+    }
+
+    const copyWebhookUrl = async (webhookId: string) => {
+        const url = `${window.location.origin}/api/webhooks/${webhookId}`
+        await navigator.clipboard.writeText(url)
+    }
+
+    return (
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Webhooks</DialogTitle>
+                <DialogDescription>
+                    Create and manage webhooks for #{channel.name}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                {isLoading ? (
+                    <div className="text-sm text-zinc-500">
+                        Loading webhooks...
+                    </div>
+                ) : (
+                    <>
+                        {webhooks.map(webhook => (
+                            <div
+                                key={webhook.id}
+                                className="flex items-center gap-2"
+                            >
+                                <Input
+                                    readOnly
+                                    value={`${window.location.origin}/api/webhooks/${webhook.id}`}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => copyWebhookUrl(webhook.id)}
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                        <Button
+                            onClick={createWebhook}
+                            className="w-full"
+                            variant="outline"
+                        >
+                            <PlusIcon className="h-4 w-4 mr-2" />
+                            Create New Webhook
+                        </Button>
+                    </>
+                )}
+            </div>
+        </DialogContent>
+    )
+}
+
 export function ChannelList({ userData, channels }: ChannelListProps) {
     const { channelId } = useParams() as { channelId: string }
     const router = useRouter()
@@ -393,7 +511,7 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
         channelName: '',
     })
 
-    const { createChannel, joinChannel } = useChannelManagement(userData.id)
+    const { joinChannel } = useChannelManagement(userData.id)
 
     // Initialize unread messages subscription
     useUnreadMessages(userData.id)
@@ -468,6 +586,11 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
                     <div className="px-2 flex flex-col gap-1">
                         {sortedChannels.map(channel => {
                             const isMember = isChannelMember(channel.id)
+                            const isOwner = useStore
+                                .getState()
+                                .channelMembers[
+                                    channel.id
+                                ]?.some(member => member.id === userData.id && member.role === 'owner')
                             return (
                                 <ChannelButton
                                     key={channel.id}
@@ -484,6 +607,8 @@ export function ChannelList({ userData, channels }: ChannelListProps) {
                                     }
                                     isMember={isMember}
                                     unreadCount={unreadCounts[channel.id] || 0}
+                                    userId={userData.id}
+                                    isOwner={isOwner}
                                 />
                             )
                         })}
