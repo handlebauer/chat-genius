@@ -269,7 +269,7 @@ export function useChatStore(
 
             const { data: memberships, error } = await supabase
                 .from('channel_members')
-                .select('channel_id')
+                .select('channel_id, role')
                 .eq('user_id', user.id)
 
             if (error) {
@@ -279,9 +279,9 @@ export function useChatStore(
 
             if (memberships) {
                 const membershipMap = memberships.reduce(
-                    (acc, { channel_id }) => {
+                    (acc, { channel_id, role }) => {
                         if (channel_id) {
-                            acc[channel_id] = true
+                            acc[channel_id] = { role: role || 'member' }
                         }
                         return acc
                     },
